@@ -1,4 +1,3 @@
-# -*- coding: utf-8 -*-
 """
 See PEP 440 (https://www.python.org/dev/peps/pep-0440/)
 
@@ -18,6 +17,6 @@ Release logic:
 11. twine upload dist/django-filer-{new_version_number}.tar.gz
 """
 
-__version__ = '1.7.1'
+__version__ = '2.0.1'
 
 default_app_config = 'filer.apps.FilerConfig'
