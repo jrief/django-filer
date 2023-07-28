@@ -1,0 +1,44 @@
+const inlineImportPlugin = require('./esbuild-plugin-inline-import');
+const path = require('path');
+const sass = require('sass');
+const { build } = require('esbuild');
+const buildOptions = require('yargs-parser')(process.argv.slice(2), {
+  boolean: ['debug', 'monolith'],
+});
+
+build({
+  entryPoints: ['client/index.tsx'],
+  bundle: true,
+  minify: !buildOptions.debug,
+  sourcemap: buildOptions.debug,
+  outfile: 'testapp/static/filer/admin/js/filer.js',
+  splitting: false,
+  format: 'esm',
+  jsx: 'automatic',
+  plugins: [
+    // Run inline style imports through Sass
+    inlineImportPlugin({
+      filter: /\.scss$/,
+      transform: async (contents, args) => {
+        return await new Promise((resolve, reject) => {
+          sass.render(
+            {
+              data: contents,
+              includePaths: [path.dirname(args.path)],
+              outputStyle: 'compressed'
+            },
+            (err, result) => {
+              if (err) {
+                reject(err);
+                return;
+              }
+              resolve(result.css.toString());
+            }
+          );
+        });
+      }
+    }),
+  ],
+  loader: {'.svg': 'text', '.jsx': 'jsx' },
+  target: ['es2020', 'chrome84', 'firefox84', 'safari14', 'edge84']
+}).catch(() => process.exit(1));
