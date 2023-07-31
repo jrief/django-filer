@@ -3,7 +3,7 @@ import {DndContext, useDraggable, useDroppable} from '@dnd-kit/core';
 
 
 function File(props) {
-	const { children, id } = props;
+	const { id } = props;
 	const {
 		attributes,
 		listeners,
@@ -24,7 +24,7 @@ function File(props) {
 	}
 	return (
 		<div ref={setNodeRefOuter} style={style} {...listeners} {...attributes}>
-			{children}
+			{id}
 		</div>
 	);
 }
@@ -60,8 +60,12 @@ function Folder(props) {
 		width: '100%',
 	};
 
+	function openFolder() {
+		console.log("open folder");
+	}
+
 	return (
-		<div ref={setNodeRefOuter} style={styleOuter} {...listeners} {...attributes}>
+		<div ref={setNodeRefOuter} style={styleOuter} {...listeners} {...attributes} onDoubleClick={openFolder}>
 			<div ref={setNodeRefInner} style={styleInner}>
 				{id}
 			</div>
@@ -75,26 +79,20 @@ export default function FilerAdmin() {
 	const [files, setFiles] = useState(['a', 'b']);
 
 	return (
-		<DndContext onDragStart={handleDragStart} onDragEnd={handleDragEnd}>
+		<DndContext onDragEnd={handleDragEnd}>
 			{folders.map((id) => (
 				// We updated the Droppable component so it would accept an `id`
 				// prop and pass it to `useDroppable`
 				<Folder key={id} id={id} />
 			))}
 			{files.map((id) => (
-				<File key={id} id={id}>{id}</File>
+				<File key={id} id={id} />
 			))}
 		</DndContext>
 	);
 
-	function handleDragStart(event) {
-		const {active} = event;
-		console.log(active);
-	}
-
 	function handleDragEnd(event) {
 		const {active, over} = event;
-		console.log(active, over);
 
 		if (over && active.id !== over.id) {
 			setFolders(folders.filter(f => f !== active.id));
