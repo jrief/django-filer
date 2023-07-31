@@ -1,13 +1,13 @@
 import {useState} from 'react';
-import {DndContext, pointerWithin, useDraggable, useDroppable} from '@dnd-kit/core';
+import {DndContext, useDraggable, useDroppable} from '@dnd-kit/core';
 
 
-function Draggable(props) {
+function File(props) {
 	const { children, id } = props;
 	const {
 		attributes,
 		listeners,
-		setNodeRef,
+		setNodeRef: setNodeRefOuter,
 		transform
 	} = useDraggable({
 		id: id,
@@ -23,61 +23,66 @@ function Draggable(props) {
 		style['transform'] = `translate(${transform.x}px, ${transform.y}px)`;
 	}
 	return (
-		<div ref={setNodeRef} style={style} {...listeners} {...attributes}>
-			{children}
-		</div>
-	);
-}
-
-
-function Droppable(props) {
-	const { children, id } = props;
-	const {
-		isOver,
-		active,
-		setNodeRef
-	} = useDroppable({
-		id: id,
-	});
-	const validTarget = isOver && active.id !== id;
-	const style = {
-		backgroundColor: validTarget ? 'green' : undefined,
-		height: '100%',
-		width: '100%',
-	};
-	return (
-		<div ref={setNodeRef} style={style}>
+		<div ref={setNodeRefOuter} style={style} {...listeners} {...attributes}>
 			{children}
 		</div>
 	);
 }
 
 function Folder(props) {
-	const { children, id } = props;
+	const { id } = props;
+	const {
+		attributes,
+		listeners,
+		setNodeRef: setNodeRefOuter,
+		transform
+	} = useDraggable({
+		id: id,
+		data: {foo: 'bar'},
+	});
+	const {
+		isOver,
+		active,
+		setNodeRef: setNodeRefInner,
+	} = useDroppable({
+		id: id,
+	});
+	const styleOuter = {
+		border: '1px solid blue',
+		height: '40px',
+		width: '120px',
+		marginTop: '10px',
+		transform: transform ? `translate(${transform.x}px, ${transform.y}px)` : undefined,
+		backgroundColor: isOver && active.id !== id ? 'green' : undefined,
+	};
+	const styleInner = {
+		height: '100%',
+		width: '100%',
+	};
 
 	return (
-		<Draggable id={id}>
-			<Droppable id={id}>
+		<div ref={setNodeRefOuter} style={styleOuter} {...listeners} {...attributes}>
+			<div ref={setNodeRefInner} style={styleInner}>
 				{id}
-			</Droppable>
-		</Draggable>
+			</div>
+		</div>
 	);
 }
 
 
-export default function FolderAdmin() {
-	const [files, setFiles] = useState(['a', 'b']);
+export default function FilerAdmin() {
 	const [folders, setFolders] = useState(['A', 'B', 'C']);
+	const [files, setFiles] = useState(['a', 'b']);
 
 	return (
-		<DndContext onDragStart={handleDragStart} onDragEnd={handleDragEnd} collisionDetection={pointerWithin}>
+		<DndContext onDragStart={handleDragStart} onDragEnd={handleDragEnd}>
 			{folders.map((id) => (
 				// We updated the Droppable component so it would accept an `id`
 				// prop and pass it to `useDroppable`
 				<Folder key={id} id={id} />
 			))}
 			{files.map((id) => (
-				<Draggable key={id} id={id}>{id}</Draggable>
+				<File key={id} id={id}>{id}</File>
 			))}
 		</DndContext>
 	);
