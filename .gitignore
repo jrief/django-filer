@@ -43,3 +43,5 @@ share/
 .python-version
 data
 local.sqlite
+client/**/*.jsx
+client/**/*.js
