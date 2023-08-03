@@ -1,6 +1,7 @@
 import {useState} from 'react';
 import {
 	DndContext,
+	DragOverlay,
 	PointerSensor,
 	useDraggable,
 	useDroppable,
@@ -14,7 +15,7 @@ function File(props) {
 	const {
 		attributes,
 		listeners,
-		setNodeRef: setNodeRefOuter,
+		setNodeRef,
 		transform
 	} = useDraggable({
 		id: file.id,
@@ -25,19 +26,25 @@ function File(props) {
 		width: '120px',
 		marginTop: '10px',
 		borderColor: file.selected ? 'red' : 'grey',
+		borderStyle: selectItem ? 'solid' :  'dotted',
+		visibility: file.dragged && selectItem ? 'hidden' : 'visible',
 	};
 	if (transform) {
-		console.log(transform);
 		style['transform'] = `translate(${transform.x}px, ${transform.y}px)`;
-	} else {
-		console.log("no transform");
 	}
 
-	return (
-		<div ref={setNodeRefOuter} style={style} onClick={selectItem.bind(file)} {...listeners} {...attributes}>
-			{file.name}
-		</div>
-	);
+	if (selectItem)
+		return (
+			<div ref={setNodeRef} style={style} onClick={selectItem.bind(file)} {...listeners} {...attributes}>
+				{file.name}
+			</div>
+		);
+	else
+		return (
+			<div style={style}>
+				{file.name}
+			</div>
+		);
 }
 
 function Folder(props) {
@@ -65,6 +72,8 @@ function Folder(props) {
 		transform: transform ? `translate(${transform.x}px, ${transform.y}px)` : undefined,
 		backgroundColor: isOver && active.id !== folder.id ? 'green' : undefined,
 		borderColor: folder.selected ? 'red' : 'grey',
+		borderStyle: selectItem ? 'solid' :  'dotted',
+		visibility: folder.dragged && selectItem ? 'hidden' : 'visible',
 	};
 	const styleInner = {
 		height: '100%',
@@ -75,29 +84,40 @@ function Folder(props) {
 		console.log("open folder");
 	}
 
-	return (
-		<div ref={setNodeRefOuter} style={styleOuter} {...listeners} {...attributes} onClick={selectItem.bind(folder)} onDoubleClick={openFolder}>
-			<div ref={setNodeRefInner} style={styleInner}>
-				{folder.name}
+	if (selectItem)
+		return (
+			<div ref={setNodeRefOuter} style={styleOuter} {...listeners} {...attributes} onClick={selectItem.bind(folder)} onDoubleClick={openFolder}>
+				<div ref={setNodeRefInner} style={styleInner}>
+					{folder.name}
+				</div>
 			</div>
-		</div>
-	);
+		);
+	else
+		return (
+			<div style={styleOuter}>
+				<div style={styleInner}>
+					{folder.name}
+				</div>
+			</div>
+		)
 }
 
 
+const foldersInitial = [
+	{id: 1, name: 'A', selected: false, dragged: false},
+	{id: 2, name: 'B', selected: false, dragged: false},
+	{id: 3, name: 'C', selected: false, dragged: false},
+	{id: 4, name: 'D', selected: false, dragged: false},
+];
+const filesInitial = [
+	{id: 5, name: 'a', selected: false, dragged: false},
+	{id: 6, name: 'b', selected: false, dragged: false},
+	{id: 7, name: 'c', selected: false, dragged: false},
+	{id: 8, name: 'd', selected: false, dragged: false},
+];
+
+
 export default function FilerAdmin() {
-	const foldersInitial = [
-		{id: 1, name: 'A', selected: false},
-		{id: 2, name: 'B', selected: false},
-		{id: 3, name: 'C', selected: false},
-		{id: 4, name: 'D', selected: false},
-	];
-	const filesInitial = [
-		{id: 5, name: 'a', selected: false},
-		{id: 6, name: 'b', selected: false},
-		{id: 7, name: 'c', selected: false},
-		{id: 8, name: 'd', selected: false},
-	];
 	const [folders, setFolders] = useState(foldersInitial);
 	const [files, setFiles] = useState(filesInitial);
 	const sensors = useSensors(
@@ -105,12 +125,18 @@ export default function FilerAdmin() {
 			activationConstraint: {distance: 4},
 		})
 	);
+	let lastSelectedFolder, lastSelectedFile: number = -1;
 
 	function selectItem(event: PointerEvent) {
 		console.log("select item");
 		console.log(event);
 		let modifier;
-		if (event.metaKey || event.shiftKey) {
+		if (event.shiftKey) {
+			const selectedFolderIndex = folders.findIndex(f => f.id === this.id);
+			const selectedFileIndex = files.findIndex(f => f.id === this.id);
+			return;
+		}
+		if (event.altKey || event.ctrlKey || event.metaKey) {
 			if (this.selected) {
 				modifier = f => ({...f, selected: f.selected && f.id !== this.id});
 			} else {
@@ -123,29 +149,65 @@ export default function FilerAdmin() {
 				modifier = f => ({...f, selected: f.id === this.id});
 			}
 		}
+		if (!this.selected) {
+			lastSelectedFolder = folders.findIndex(f => f.id === this.id);
+			lastSelectedFile = files.findIndex(f => f.id === this.id);
+		}
+		setFolders(folders.map(modifier));
+		setFiles(files.map(modifier));
+	}
+
+	function handleDragStart(event) {
+		const {active} = event;
+		console.log(active.id);
+		const modifier = f => ({...f, dragged: f.selected || f.id === active.id});
 		setFolders(folders.map(modifier));
 		setFiles(files.map(modifier));
 	}
 
 	function handleDragEnd(event) {
 		const {active, over} = event;
-
+		const modifier = f => ({...f, dragged: false});
+		setFiles(files.map(modifier));
+		setFolders(folders.map(modifier));
 		if (over && active.id !== over.id) {
-			setFolders(folders.filter(f => f.id !== active.id));
-			setFiles(files.filter(f => f.id !== active.id));
+			const condition = f => !f.dragged && f.id !== active.id;
+			setFolders(folders.filter(condition));
+			setFiles(files.filter(condition));
 		}
 	}
 
+	function handleDragCancel(event) {
+		const modifier = f => ({...f, dragged: false});
+		setFolders(folders.map(modifier));
+		setFiles(files.map(modifier));
+	}
+
+	const styleOverlay = {
+		backgroundColor: 'rgba(255, 255, 198, 0.3)',
+		transform: 'translate(-50%, -50%)',
+		width: 'max-content',
+		height: 'max-content',
+	};
+
 	return (
-		<DndContext onDragEnd={handleDragEnd} sensors={sensors}>
+		<DndContext onDragStart={handleDragStart} onDragEnd={handleDragEnd} onDragCancel={handleDragCancel} sensors={sensors}>
 			{folders.map(folder => (
-				// We updated the Droppable component so it would accept an `id`
-				// prop and pass it to `useDroppable`
 				<Folder key={folder.id} folder={folder} selectItem={selectItem} />
 			))}
 			{files.map(file => (
 				<File key={file.id} file={file} selectItem={selectItem} />
 			))}
+			<DragOverlay>
+				<div style={styleOverlay}>
+					{folders.filter(f => f.dragged).map(folder => (
+						<Folder key={folder.id} folder={folder} />
+					))}
+					{files.filter(f => f.dragged).map(file => (
+						<File key={file.id} file={file} />
+					))}
+				</div>
+			</DragOverlay>
 		</DndContext>
 	);
 }
