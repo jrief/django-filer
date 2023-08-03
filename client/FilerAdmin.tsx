@@ -11,65 +11,62 @@ import {
 
 
 function Inode(props) {
-	const { inode, selectItem, children } = props;
 	const {
 		attributes,
 		listeners,
 		setNodeRef,
 		transform
 	} = useDraggable({
-		id: inode.id,
+		id: props.id,
 	});
 	const style = {
 		border: '1px solid grey',
 		height: '40px',
 		width: '120px',
 		marginTop: '10px',
-		borderColor: inode.selected ? 'red' : 'grey',
-		borderStyle: selectItem ? 'solid' :  'dotted',
-		visibility: inode.dragged && selectItem ? 'hidden' : 'visible',
+		borderColor: props.selected ? 'red' : 'grey',
+		borderStyle: props.selectItem ? 'solid' :  'dotted',
+		visibility: props.dragged && props.selectItem ? 'hidden' : 'visible',
 	};
 	if (transform) {
 		style['transform'] = `translate(${transform.x}px, ${transform.y}px)`;
 	}
 
-	if (selectItem)
+	if (props.selectItem)
 		return (
-			<div ref={setNodeRef} style={style} onClick={selectItem.bind(inode)} {...listeners} {...attributes}>
-				{children}
+			<div ref={setNodeRef} style={style} onClick={props.selectItem.bind(props)} {...listeners} {...attributes}>
+				{props.children}
 			</div>
 		);
 	else
 		return (
 			<div style={style}>
-				{children}
+				{props.name}
 			</div>
 		);
 }
 
 
 function File(props) {
-	const { file, selectItem } = props;
 	return (
-		<Inode inode={file} selectItem={selectItem}>
-			{file.name}
+		<Inode {...props}>
+			{props.name}
 		</Inode>
 	);
 }
 
 function Folder(props) {
-	const { folder, selectItem } = props;
 	const {
 		isOver,
 		active,
 		setNodeRef: setNodeRefInner,
 	} = useDroppable({
-		id: folder.id,
+		id: props.id,
 	});
 	const style = {
 		height: '100%',
 		width: '100%',
-		backgroundColor: isOver && active.id !== folder.id ? 'green' : undefined
+		backgroundColor: isOver && active.id !== props.id ? 'green' : undefined
 	};
 
 	function openFolder() {
@@ -77,49 +74,46 @@ function Folder(props) {
 	}
 
 	return (
-		<Inode inode={folder} selectItem={selectItem}>
+		<Inode {...props}>
 			<div ref={setNodeRefInner} style={style}>
-				{folder.name}
+				{props.name}
 			</div>
 		</Inode>
 	);
 }
 
 
-const foldersInitial = [
-	{id: 1, name: 'A', selected: false, dragged: false},
-	{id: 2, name: 'B', selected: false, dragged: false},
-	{id: 3, name: 'C', selected: false, dragged: false},
-	{id: 4, name: 'D', selected: false, dragged: false},
-];
-const filesInitial = [
-	{id: 5, name: 'a', selected: false, dragged: false},
-	{id: 6, name: 'b', selected: false, dragged: false},
-	{id: 7, name: 'c', selected: false, dragged: false},
-	{id: 8, name: 'd', selected: false, dragged: false},
+const initialInodes = [
+	{id: 1, type: 'folder', name: 'A', selected: false, dragged: false},
+	{id: 2, type: 'folder', name: 'B', selected: false, dragged: false},
+	{id: 3, type: 'folder', name: 'C', selected: false, dragged: false},
+	{id: 4, type: 'folder', name: 'D', selected: false, dragged: false},
+	{id: 5, type: 'file', name: 'a', selected: false, dragged: false},
+	{id: 6, type: 'file', name: 'b', selected: false, dragged: false},
+	{id: 7, type: 'file', name: 'c', selected: false, dragged: false},
+	{id: 8, type: 'file', name: 'd', selected: false, dragged: false},
 ];
 
 
 export default function FilerAdmin() {
-	const [folders, setFolders] = useState(foldersInitial);
-	const [files, setFiles] = useState(filesInitial);
+	const [inodes, setInodes] = useState(initialInodes);
+	const [lastSelectedInode, setSelectedInode] = useState(-1);
 	const sensors = useSensors(
 		useSensor(PointerSensor, {
 			activationConstraint: {distance: 4},
 		})
 	);
-	let lastSelectedFolder, lastSelectedFile: number = -1;
 
-	function selectItem(event: PointerEvent) {
-		console.log("select item");
-		console.log(event);
+	function selectInode(event: PointerEvent) {
 		let modifier;
 		if (event.shiftKey) {
-			const selectedFolderIndex = folders.findIndex(f => f.id === this.id);
-			const selectedFileIndex = files.findIndex(f => f.id === this.id);
-			return;
-		}
-		if (event.altKey || event.ctrlKey || event.metaKey) {
+			const selectedInodeIndex = inodes.findIndex(f => f.id === this.id);
+			if (selectedInodeIndex < lastSelectedInode) {
+				modifier = (f, k) => ({...f, selected: k >= selectedInodeIndex && k <= lastSelectedInode});
+			} else if (selectedInodeIndex > lastSelectedInode) {
+				modifier = (f, k) => ({...f, selected: k >= lastSelectedInode && k <= selectedInodeIndex});
+			}
+		} else if (event.altKey || event.ctrlKey || event.metaKey) {
 			if (this.selected) {
 				modifier = f => ({...f, selected: f.selected && f.id !== this.id});
 			} else {
@@ -133,61 +127,47 @@ export default function FilerAdmin() {
 			}
 		}
 		if (!this.selected) {
-			lastSelectedFolder = folders.findIndex(f => f.id === this.id);
-			lastSelectedFile = files.findIndex(f => f.id === this.id);
+			setSelectedInode(inodes.findIndex(f => f.id === this.id));
 		}
-		setFolders(folders.map(modifier));
-		setFiles(files.map(modifier));
+		setInodes(inodes.map(modifier));
 	}
 
 	function handleDragStart(event) {
 		const {active} = event;
-		console.log(active.id);
-		const modifier = f => ({...f, dragged: f.selected || f.id === active.id});
-		setFolders(folders.map(modifier));
-		setFiles(files.map(modifier));
+		setInodes(inodes.map(f => ({...f, dragged: f.selected || f.id === active.id})));
 	}
 
 	function handleDragEnd(event) {
 		const {active, over} = event;
-		const modifier = f => ({...f, dragged: false});
-		setFiles(files.map(modifier));
-		setFolders(folders.map(modifier));
+		setInodes(inodes.map(f => ({...f, dragged: false})));
 		if (over && active.id !== over.id) {
-			const condition = f => !f.dragged && f.id !== active.id;
-			setFolders(folders.filter(condition));
-			setFiles(files.filter(condition));
+			setInodes(inodes.filter(f => !f.dragged && f.id !== active.id));
 		}
 	}
 
 	function handleDragCancel(event) {
-		const modifier = f => ({...f, dragged: false});
-		setFolders(folders.map(modifier));
-		setFiles(files.map(modifier));
+		setInodes(inodes.map(f => ({...f, dragged: false})));
 	}
 
 	const styleOverlay = {
 		backgroundColor: 'rgba(255, 255, 198, 0.3)',
-		transform: 'translate(0, -50%)',
+		//transform: 'translate(0, -50%)',
 		width: 'max-content',
 		height: 'max-content',
 	};
 
 	return (
 		<DndContext onDragStart={handleDragStart} onDragEnd={handleDragEnd} onDragCancel={handleDragCancel} sensors={sensors}>
-			{folders.map(folder => (
-				<Folder key={folder.id} folder={folder} selectItem={selectItem} />
-			))}
-			{files.map(file => (
-				<File key={file.id} file={file} selectItem={selectItem} />
-			))}
+			{inodes.map(inode =>
+				(inode.type === 'file'
+				? <File key={inode.id} {...inode} selectItem={selectInode} />
+				: <Folder key={inode.id} {...inode} selectItem={selectInode} />
+				)
+			)}
 			<DragOverlay>
 				<div style={styleOverlay}>
-					{folders.filter(f => f.dragged).map(folder => (
-						<Folder key={folder.id} folder={folder} />
-					))}
-					{files.filter(f => f.dragged).map(file => (
-						<File key={file.id} file={file} />
+					{inodes.filter(f => f.dragged).map(inode => (
+						<Inode key={inode.id} {...inode} />
 					))}
 				</div>
 			</DragOverlay>
