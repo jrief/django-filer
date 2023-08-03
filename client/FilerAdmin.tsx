@@ -10,24 +10,24 @@ import {
 } from '@dnd-kit/core';
 
 
-function File(props) {
-	const { file, selectItem } = props;
+function Inode(props) {
+	const { inode, selectItem, children } = props;
 	const {
 		attributes,
 		listeners,
 		setNodeRef,
 		transform
 	} = useDraggable({
-		id: file.id,
+		id: inode.id,
 	});
 	const style = {
 		border: '1px solid grey',
 		height: '40px',
 		width: '120px',
 		marginTop: '10px',
-		borderColor: file.selected ? 'red' : 'grey',
+		borderColor: inode.selected ? 'red' : 'grey',
 		borderStyle: selectItem ? 'solid' :  'dotted',
-		visibility: file.dragged && selectItem ? 'hidden' : 'visible',
+		visibility: inode.dragged && selectItem ? 'hidden' : 'visible',
 	};
 	if (transform) {
 		style['transform'] = `translate(${transform.x}px, ${transform.y}px)`;
@@ -35,28 +35,30 @@ function File(props) {
 
 	if (selectItem)
 		return (
-			<div ref={setNodeRef} style={style} onClick={selectItem.bind(file)} {...listeners} {...attributes}>
-				{file.name}
+			<div ref={setNodeRef} style={style} onClick={selectItem.bind(inode)} {...listeners} {...attributes}>
+				{children}
 			</div>
 		);
 	else
 		return (
 			<div style={style}>
-				{file.name}
+				{children}
 			</div>
 		);
 }
 
+
+function File(props) {
+	const { file, selectItem } = props;
+	return (
+		<Inode inode={file} selectItem={selectItem}>
+			{file.name}
+		</Inode>
+	);
+}
+
 function Folder(props) {
 	const { folder, selectItem } = props;
-	const {
-		attributes,
-		listeners,
-		setNodeRef: setNodeRefOuter,
-		transform
-	} = useDraggable({
-		id: folder.id,
-	});
 	const {
 		isOver,
 		active,
@@ -64,42 +66,23 @@ function Folder(props) {
 	} = useDroppable({
 		id: folder.id,
 	});
-	const styleOuter = {
-		border: '2px solid grey',
-		height: '40px',
-		width: '120px',
-		marginTop: '10px',
-		transform: transform ? `translate(${transform.x}px, ${transform.y}px)` : undefined,
-		backgroundColor: isOver && active.id !== folder.id ? 'green' : undefined,
-		borderColor: folder.selected ? 'red' : 'grey',
-		borderStyle: selectItem ? 'solid' :  'dotted',
-		visibility: folder.dragged && selectItem ? 'hidden' : 'visible',
-	};
-	const styleInner = {
+	const style = {
 		height: '100%',
 		width: '100%',
+		backgroundColor: isOver && active.id !== folder.id ? 'green' : undefined
 	};
 
 	function openFolder() {
 		console.log("open folder");
 	}
 
-	if (selectItem)
-		return (
-			<div ref={setNodeRefOuter} style={styleOuter} {...listeners} {...attributes} onClick={selectItem.bind(folder)} onDoubleClick={openFolder}>
-				<div ref={setNodeRefInner} style={styleInner}>
-					{folder.name}
-				</div>
+	return (
+		<Inode inode={folder} selectItem={selectItem}>
+			<div ref={setNodeRefInner} style={style}>
+				{folder.name}
 			</div>
-		);
-	else
-		return (
-			<div style={styleOuter}>
-				<div style={styleInner}>
-					{folder.name}
-				</div>
-			</div>
-		)
+		</Inode>
+	);
 }
 
 
@@ -185,7 +168,7 @@ export default function FilerAdmin() {
 
 	const styleOverlay = {
 		backgroundColor: 'rgba(255, 255, 198, 0.3)',
-		transform: 'translate(-50%, -50%)',
+		transform: 'translate(0, -50%)',
 		width: 'max-content',
 		height: 'max-content',
 	};
