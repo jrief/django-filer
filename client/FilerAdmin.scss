@@ -1,0 +1,25 @@
+#filer-admin {
+	background-color: papayawhip;
+
+	.selectable-area {
+		position: relative;
+		width: 100%;
+		height: 100%;
+
+		.select-rectangle {
+			position: absolute;
+			border: 1px dashed grey;
+		}
+	}
+
+	.inode-list {
+		list-style: none;
+		padding: 0;
+		margin: 20px 50px;
+		li {
+			padding: 0;
+			margin: 0;
+			user-select: none;
+		}
+	}
+}

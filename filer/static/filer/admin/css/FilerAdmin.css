@@ -1,0 +1,24 @@
+#filer-admin {
+  background-color: papayawhip;
+}
+#filer-admin .selectable-area {
+  position: relative;
+  width: 100%;
+  height: 100%;
+}
+#filer-admin .selectable-area .select-rectangle {
+  position: absolute;
+  border: 1px dashed grey;
+}
+#filer-admin .inode-list {
+  list-style: none;
+  padding: 0;
+  margin: 20px 50px;
+}
+#filer-admin .inode-list li {
+  padding: 0;
+  margin: 0;
+  user-select: none;
+}
+
+/*# sourceMappingURL=FilerAdmin.css.map */

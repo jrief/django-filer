@@ -8,6 +8,7 @@ import {
 	useSensor,
 	useSensors,
 } from '@dnd-kit/core';
+import {SelectableArea} from './SelectableArea';
 
 
 function Inode(props) {
@@ -34,15 +35,15 @@ function Inode(props) {
 
 	if (props.selectItem)
 		return (
-			<div ref={setNodeRef} style={style} onClick={props.selectItem.bind(props)} {...listeners} {...attributes}>
+			<li ref={setNodeRef} style={style} onClick={props.selectItem.bind(props)} {...listeners} {...attributes}>
 				{props.children}
-			</div>
+			</li>
 		);
 	else
 		return (
-			<div style={style}>
+			<li style={style}>
 				{props.name}
-			</div>
+			</li>
 		);
 }
 
@@ -59,7 +60,7 @@ function Folder(props) {
 	const {
 		isOver,
 		active,
-		setNodeRef: setNodeRefInner,
+		setNodeRef,
 	} = useDroppable({
 		id: props.id,
 	});
@@ -75,7 +76,7 @@ function Folder(props) {
 
 	return (
 		<Inode {...props}>
-			<div ref={setNodeRefInner} style={style}>
+			<div ref={setNodeRef} style={style}>
 				{props.name}
 			</div>
 		</Inode>
@@ -113,7 +114,7 @@ export default function FilerAdmin() {
 			} else if (selectedInodeIndex > lastSelectedInode) {
 				modifier = (f, k) => ({...f, selected: k >= lastSelectedInode && k <= selectedInodeIndex});
 			}
-		} else if (event.altKey || event.ctrlKey || event.metaKey) {
+		} else if (event.altKey || event.ctrlKey || event.metaKey || event.detail?.selected) {
 			if (this.selected) {
 				modifier = f => ({...f, selected: f.selected && f.id !== this.id});
 			} else {
@@ -150,27 +151,31 @@ export default function FilerAdmin() {
 	}
 
 	const styleOverlay = {
-		backgroundColor: 'rgba(255, 255, 198, 0.3)',
 		//transform: 'translate(0, -50%)',
-		width: 'max-content',
-		height: 'max-content',
+		//width: 'max-content',
+		//height: 'max-content',
+		backgroundColor: 'yellow',
 	};
 
 	return (
-		<DndContext onDragStart={handleDragStart} onDragEnd={handleDragEnd} onDragCancel={handleDragCancel} sensors={sensors}>
-			{inodes.map(inode =>
-				(inode.type === 'file'
-				? <File key={inode.id} {...inode} selectItem={selectInode} />
-				: <Folder key={inode.id} {...inode} selectItem={selectInode} />
-				)
-			)}
-			<DragOverlay>
-				<div style={styleOverlay}>
-					{inodes.filter(f => f.dragged).map(inode => (
-						<Inode key={inode.id} {...inode} />
-					))}
-				</div>
-			</DragOverlay>
-		</DndContext>
+		<SelectableArea>
+			<DndContext onDragStart={handleDragStart} onDragEnd={handleDragEnd} onDragCancel={handleDragCancel} sensors={sensors}>
+				<ul className={'inode-list'}>
+				{inodes.map(inode =>
+					(inode.type === 'file'
+					? <File key={inode.id} {...inode} selectItem={selectInode} />
+					: <Folder key={inode.id} {...inode} selectItem={selectInode} />
+					)
+				)}
+				</ul>
+				<DragOverlay>
+					<ul style={styleOverlay} className={'inode-list'}>
+						{inodes.filter(f => f.dragged).map(inode => (
+							<Inode key={inode.id} {...inode} />
+						))}
+					</ul>
+				</DragOverlay>
+			</DndContext>
+		</SelectableArea>
 	);
 }
