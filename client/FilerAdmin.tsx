@@ -1,8 +1,10 @@
-import {useState} from 'react';
+import {useRef, useState} from 'react';
+import {restrictToParentElement} from '@dnd-kit/modifiers';
 import {
 	DndContext,
 	DragOverlay,
 	PointerSensor,
+	pointerWithin,
 	useDraggable,
 	useDroppable,
 	useSensor,
@@ -20,28 +22,27 @@ function Inode(props) {
 	} = useDraggable({
 		id: props.id,
 	});
-	const style = {
-		border: '1px solid grey',
-		height: '40px',
-		width: '120px',
-		marginTop: '10px',
-		borderColor: props.selected ? 'red' : 'grey',
-		borderStyle: props.selectItem ? 'solid' :  'dotted',
-		visibility: props.dragged && props.selectItem ? 'hidden' : 'visible',
-	};
-	if (transform) {
-		style['transform'] = `translate(${transform.x}px, ${transform.y}px)`;
+
+	function cssClasses() {
+		let classes = [];
+		if (props.selected) {
+			classes.push('selected');
+		}
+		if (props.dragged) {
+			classes.push('dragging');
+		}
+		return classes.join(' ');
 	}
 
 	if (props.selectItem)
 		return (
-			<li ref={setNodeRef} style={style} onClick={props.selectItem.bind(props)} {...listeners} {...attributes}>
+			<li ref={setNodeRef} className={cssClasses()} onClick={props.selectItem.bind(props)} {...listeners} {...attributes}>
 				{props.children}
 			</li>
 		);
 	else
 		return (
-			<li style={style}>
+			<li data-id={props.id}>
 				{props.name}
 			</li>
 		);
@@ -64,11 +65,6 @@ function Folder(props) {
 	} = useDroppable({
 		id: props.id,
 	});
-	const style = {
-		height: '100%',
-		width: '100%',
-		backgroundColor: isOver && active.id !== props.id ? 'green' : undefined
-	};
 
 	function openFolder() {
 		console.log("open folder");
@@ -76,7 +72,7 @@ function Folder(props) {
 
 	return (
 		<Inode {...props}>
-			<div ref={setNodeRef} style={style}>
+			<div ref={setNodeRef} className={isOver && active.id !== props.id ? 'droppable drag-over' : 'droppable'}>
 				{props.name}
 			</div>
 		</Inode>
@@ -97,24 +93,32 @@ const initialInodes = [
 
 
 export default function FilerAdmin() {
+	const overlayRef = useRef(null);
 	const [inodes, setInodes] = useState(initialInodes);
 	const [lastSelectedInode, setSelectedInode] = useState(-1);
+	const [draggedIds, setDraggedIds] = useState(null);
 	const sensors = useSensors(
 		useSensor(PointerSensor, {
 			activationConstraint: {distance: 4},
-		})
+		}),
 	);
+	const overlayStyle = {
+		height: 'fit-content',
+		width: 'fit-content',
+	};
 
 	function selectInode(event: PointerEvent) {
 		let modifier;
-		if (event.shiftKey) {
+		if (event.detail?.selected) {
+			modifier = f => ({...f, selected: f.selected || f.id === this.id});
+		} else if (event.shiftKey) {
 			const selectedInodeIndex = inodes.findIndex(f => f.id === this.id);
 			if (selectedInodeIndex < lastSelectedInode) {
 				modifier = (f, k) => ({...f, selected: k >= selectedInodeIndex && k <= lastSelectedInode});
 			} else if (selectedInodeIndex > lastSelectedInode) {
 				modifier = (f, k) => ({...f, selected: k >= lastSelectedInode && k <= selectedInodeIndex});
 			}
-		} else if (event.altKey || event.ctrlKey || event.metaKey || event.detail?.selected) {
+		} else if (event.altKey || event.ctrlKey || event.metaKey) {
 			if (this.selected) {
 				modifier = f => ({...f, selected: f.selected && f.id !== this.id});
 			} else {
@@ -135,7 +139,15 @@ export default function FilerAdmin() {
 
 	function handleDragStart(event) {
 		const {active} = event;
-		setInodes(inodes.map(f => ({...f, dragged: f.selected || f.id === active.id})));
+		console.log(`Start dragging ${active.name}`);
+
+		const multiSelected = inodes.some(f => f.selected && f.id === active.id);
+		const draggedInodes= multiSelected
+			? inodes.map(f => ({...f, dragged: f.selected}))
+			: inodes.map(f => ({...f, dragged: f.id === active.id, selected: false}));
+		const firstDraggedIndex = draggedInodes.findIndex(f => f.dragged);
+		setDraggedIds(firstDraggedIndex !== -1 ? [draggedInodes[firstDraggedIndex].id, active.id] : null);
+		setInodes(draggedInodes);
 	}
 
 	function handleDragEnd(event) {
@@ -146,21 +158,39 @@ export default function FilerAdmin() {
 		}
 	}
 
-	function handleDragCancel(event) {
+	function handleDragCancel() {
 		setInodes(inodes.map(f => ({...f, dragged: false})));
 	}
 
-	const styleOverlay = {
-		//transform: 'translate(0, -50%)',
-		//width: 'max-content',
-		//height: 'max-content',
-		backgroundColor: 'yellow',
-	};
+	function getSelectableElements(areaElement: HTMLElement)  {
+		return areaElement.querySelectorAll('.inode-list > li');
+	}
+
+	function modifyMovement(args) {
+		const {transform} = args;
+
+		// If we are dragging multiple elements, we want to offset the drag overlay
+		let offsetX = 0, offsetY = 0;
+		if (overlayRef.current && draggedIds) {
+			const firstDraggedInode = overlayRef.current.querySelector(`.inode-list [data-id="${draggedIds[0]}"]`);
+			const lastDraggedInode = overlayRef.current.querySelector(`.inode-list [data-id="${draggedIds[1]}"]`);
+			if (firstDraggedInode && lastDraggedInode) {
+				offsetX = firstDraggedInode.getBoundingClientRect().left - lastDraggedInode.getBoundingClientRect().left;
+				offsetY = firstDraggedInode.getBoundingClientRect().top - lastDraggedInode.getBoundingClientRect().top;
+			}
+		}
+
+		return {
+			...transform,
+			x: transform.x + offsetX,
+			y: transform.y + offsetY,
+		};
+	}
 
 	return (
-		<SelectableArea>
-			<DndContext onDragStart={handleDragStart} onDragEnd={handleDragEnd} onDragCancel={handleDragCancel} sensors={sensors}>
-				<ul className={'inode-list'}>
+		<SelectableArea selectableElements={getSelectableElements}>
+			<DndContext onDragStart={handleDragStart} onDragEnd={handleDragEnd} onDragCancel={handleDragCancel} sensors={sensors} collisionDetection={pointerWithin}>
+				<ul className="inode-list">
 				{inodes.map(inode =>
 					(inode.type === 'file'
 					? <File key={inode.id} {...inode} selectItem={selectInode} />
@@ -168,13 +198,13 @@ export default function FilerAdmin() {
 					)
 				)}
 				</ul>
-				<DragOverlay>
-					<ul style={styleOverlay} className={'inode-list'}>
-						{inodes.filter(f => f.dragged).map(inode => (
-							<Inode key={inode.id} {...inode} />
-						))}
-					</ul>
-				</DragOverlay>
+				<div ref={overlayRef} className="drag-overlay">
+					<DragOverlay wrapperElement="ul" className="inode-list" style={overlayStyle} modifiers={[modifyMovement, restrictToParentElement]}>
+					{inodes.filter(f => f.dragged).map(inode => (
+						<Inode key={inode.id} {...inode} />
+					))}
+					</DragOverlay>
+				</div>
 			</DndContext>
 		</SelectableArea>
 	);

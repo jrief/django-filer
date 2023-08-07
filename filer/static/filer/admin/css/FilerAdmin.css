@@ -10,15 +10,40 @@
   position: absolute;
   border: 1px dashed grey;
 }
-#filer-admin .inode-list {
+#filer-admin ul.inode-list {
   list-style: none;
   padding: 0;
   margin: 20px 50px;
 }
-#filer-admin .inode-list li {
+#filer-admin ul.inode-list > li {
   padding: 0;
   margin: 0;
   user-select: none;
+  border: 2px solid grey;
+  height: 40px;
+  width: 120px;
+  margin: 5px;
+}
+#filer-admin ul.inode-list > li.selected {
+  border-color: red;
+}
+#filer-admin ul.inode-list > li div.droppable {
+  height: 100%;
+  width: 100%;
+}
+#filer-admin ul.inode-list > li div.droppable.drag-over {
+  background-color: lightgrey;
+}
+#filer-admin .drag-overlay ul.inode-list {
+  margin: 0;
+  padding: 0;
+  opacity: 0.65;
+}
+#filer-admin .drag-overlay ul.inode-list > li {
+  border-style: dashed;
+}
+#filer-admin :not(.drag-overlay) ul.inode-list > li.dragging {
+  visibility: hidden;
 }
 
 /*# sourceMappingURL=FilerAdmin.css.map */

@@ -12,14 +12,46 @@
 		}
 	}
 
-	.inode-list {
+	ul.inode-list {
 		list-style: none;
 		padding: 0;
 		margin: 20px 50px;
-		li {
+
+		> li {
 			padding: 0;
 			margin: 0;
 			user-select: none;
+			border: 2px solid grey;
+			height: 40px;
+			width: 120px;
+			margin: 5px;
+			&.selected {
+				border-color: red;
+			}
+
+			div.droppable {
+				height: 100%;
+				width: 100%;
+				&.drag-over {
+					background-color: lightgrey;
+				}
+			}
+		}
+	}
+
+	.drag-overlay {
+		ul.inode-list {
+			margin: 0;
+			padding: 0;
+			opacity: 0.65;
+			> li {
+				border-style: dashed;
+			}
+		}
+	}
+	:not(.drag-overlay) {
+		ul.inode-list > li.dragging {
+			visibility: hidden;
 		}
 	}
 }

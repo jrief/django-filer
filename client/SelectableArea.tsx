@@ -12,7 +12,7 @@ function SelectRectangle(props) {
 		height: `${props.style.height}px`,
 	}
 	return (
-		<div className={'select-rectangle'} style={style}></div>
+		<div className="select-rectangle" style={style}></div>
 	);
 }
 
@@ -75,7 +75,7 @@ export function SelectableArea(props) {
 		activeRect.left += areaRect.x;
 		activeRect.top += areaRect.y;
 		console.log(activeRect);
-		const elements = areaRef.current.getElementsByTagName('li');
+		const elements = props.selectableElements(areaRef.current);
 		for (let element of elements) {
 			const elemRect = element.getBoundingClientRect();
 			if (
@@ -96,10 +96,8 @@ export function SelectableArea(props) {
 		setActiveRect(null);
 	};
 
-
-
 	return (
-		<div ref={areaRef} className={'selectable-area'} onMouseDown={handleDragStart} onMouseMove={handleDragMove} onMouseUp={handleDragEnd}>
+		<div ref={areaRef} className="selectable-area" onMouseDown={handleDragStart} onMouseMove={handleDragMove} onMouseUp={handleDragEnd}>
 			{props.children}
 			<SelectRectangle style={activeRect} />
 		</div>

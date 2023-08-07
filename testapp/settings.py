@@ -32,6 +32,8 @@ INSTALLED_APPS = [
     'django.contrib.sessions',
     'django.contrib.messages',
     'django.contrib.staticfiles',
+    'easy_thumbnails',
+    'filer',
     'testapp',
 ]
 
@@ -100,7 +102,7 @@ STATICFILES_DIRS = [
     ('node_modules', BASE_DIR / 'node_modules'),
 ]
 
-STATIC_ROOT = Path(os.getenv('DJANGO_STATIC_ROOT', BASE_DIR / 'staticfiles'))
+# STATIC_ROOT = Path(os.getenv('DJANGO_STATIC_ROOT', BASE_DIR / 'staticfiles'))
 
 STATIC_URL = '/static/'
 
