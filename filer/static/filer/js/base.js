@@ -91,6 +91,12 @@ Cl.mediator = new Mediator();
 
             // timeout is needed to wait until table row has class selected.
             setTimeout(function () {
+                // Set classes for checked items
+                actionSelect.each(function (no, el) {
+                    if (el.checked) {
+                        el.closest('.list-item').classList.add('selected');
+                    }
+                });
                 if (navigatorTable.hasClass('selected')) {
                     actionList.addClass('action-selected');
                 }
@@ -98,7 +104,7 @@ Cl.mediator = new Mediator();
 
             actionSelect.on('change', function () {
                 // Mark element selected (for table view this is done by Django admin js - we do it ourselves
-                if ($(this).prop("checked")) {
+                if ($(this).prop('checked')) {
                     $(this).closest('.list-item').addClass('selected');
                 } else {
                     $(this).closest('.list-item').removeClass('selected');

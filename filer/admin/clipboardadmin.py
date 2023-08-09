@@ -1,18 +1,21 @@
-from django.contrib import admin
+from django.contrib import admin, messages
 from django.forms.models import modelform_factory
 from django.http import JsonResponse
-from django.urls import re_path
+from django.urls import path
+from django.utils.translation import gettext_lazy as _
 from django.views.decorators.csrf import csrf_exempt
 
 from .. import settings as filer_settings
 from ..models import Clipboard, ClipboardItem, Folder
 from ..utils.files import handle_request_files_upload, handle_upload
 from ..utils.loader import load_model
+from ..validation import FileValidationError, validate_upload
 from . import views
 
 
-NO_FOLDER_ERROR = "Can't find folder to upload. Please refresh and try again"
-NO_PERMISSIONS_FOR_FOLDER = (
+NO_PERMISSIONS = _("You do not have permission to upload files.")
+NO_FOLDER_ERROR = _("Can't find folder to upload. Please refresh and try again")
+NO_PERMISSIONS_FOR_FOLDER = _(
     "Can't use this folder, Permission Denied. Please select another folder."
 )
 
@@ -35,21 +38,21 @@ class ClipboardAdmin(admin.ModelAdmin):
 
     def get_urls(self):
         return [
-            re_path(r'^operations/paste_clipboard_to_folder/$',
-                    self.admin_site.admin_view(views.paste_clipboard_to_folder),
-                    name='filer-paste_clipboard_to_folder'),
-            re_path(r'^operations/discard_clipboard/$',
-                    self.admin_site.admin_view(views.discard_clipboard),
-                    name='filer-discard_clipboard'),
-            re_path(r'^operations/delete_clipboard/$',
-                    self.admin_site.admin_view(views.delete_clipboard),
-                    name='filer-delete_clipboard'),
-            re_path(r'^operations/upload/(?P<folder_id>[0-9]+)/$',
-                    ajax_upload,
-                    name='filer-ajax_upload'),
-            re_path(r'^operations/upload/no_folder/$',
-                    ajax_upload,
-                    name='filer-ajax_upload'),
+            path('operations/paste_clipboard_to_folder/',
+                 self.admin_site.admin_view(views.paste_clipboard_to_folder),
+                 name='filer-paste_clipboard_to_folder'),
+            path('operations/discard_clipboard/',
+                 self.admin_site.admin_view(views.discard_clipboard),
+                 name='filer-discard_clipboard'),
+            path('operations/delete_clipboard/',
+                 self.admin_site.admin_view(views.delete_clipboard),
+                 name='filer-delete_clipboard'),
+            path('operations/upload/<int:folder_id>/',
+                 ajax_upload,
+                 name='filer-ajax_upload'),
+            path('operations/upload/no_folder/',
+                 ajax_upload,
+                 name='filer-ajax_upload'),
         ] + super().get_urls()
 
     def get_model_perms(self, *args, **kwargs):
@@ -68,21 +71,28 @@ def ajax_upload(request, folder_id=None):
     """
     Receives an upload from the uploader. Receives only one file at a time.
     """
+
+    if not request.user.has_perm("filer.add_file"):
+        messages.error(request, NO_PERMISSIONS)
+        return JsonResponse({'error': NO_PERMISSIONS})
+
     if folder_id:
         try:
             # Get folder
             folder = Folder.objects.get(pk=folder_id)
         except Folder.DoesNotExist:
+            messages.error(request, NO_FOLDER_ERROR)
             return JsonResponse({'error': NO_FOLDER_ERROR})
     else:
         folder = Folder.objects.filter(pk=request.session.get('filer_last_folder_id', 0)).first()
 
     # check permissions
     if folder and not folder.has_add_children_permission(request):
+        messages.error(request, NO_PERMISSIONS_FOR_FOLDER)
         return JsonResponse({'error': NO_PERMISSIONS_FOR_FOLDER})
 
     if len(request.FILES) == 1:
-        # dont check if request is ajax or not, just grab the file
+        # don't check if request is ajax or not, just grab the file
         upload, filename, is_raw, mime_type = handle_request_files_upload(request)
     else:
         # else process the request as usual
@@ -105,6 +115,13 @@ def ajax_upload(request, folder_id=None):
                           {'file': upload})
     uploadform.instance.mime_type = mime_type
     if uploadform.is_valid():
+        try:
+            validate_upload(filename, upload, request.user, mime_type)
+        except FileValidationError as error:
+            from django.contrib.messages import ERROR, add_message
+            message = str(error)
+            add_message(request, ERROR, message)
+            return JsonResponse({'error': message})
         file_obj = uploadform.save(commit=False)
         # Enforce the FILER_IS_PUBLIC_DEFAULT
         file_obj.is_public = filer_settings.FILER_IS_PUBLIC_DEFAULT
@@ -123,7 +140,7 @@ def ajax_upload(request, folder_id=None):
             'file_id': file_obj.pk,
         }
         # prepare preview thumbnail
-        if type(file_obj) == Image:
+        if isinstance(file_obj, Image):
             thumbnail_180_options = {
                 'size': (180, 180),
                 'crop': True,
@@ -135,7 +152,7 @@ def ajax_upload(request, folder_id=None):
             data['original_image'] = file_obj.url
         return JsonResponse(data)
     else:
-        form_errors = '; '.join(['%s: %s' % (
+        form_errors = '; '.join(['{}: {}'.format(
             field,
             ', '.join(errors)) for field, errors in list(
                 uploadform.errors.items())

@@ -1,6 +1,7 @@
 # requirements from setup.py
 Pillow
-django-mptt
+pillow-heif
+django-app-helper>=3.3.1
 
 # other requirements
 coverage

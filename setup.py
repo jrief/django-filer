@@ -5,11 +5,17 @@ from filer import __version__
 
 
 REQUIREMENTS = [
-    'django>=2.2,<5',
-    'django-mptt',
+    'django>=3.2,<5',
     'django-polymorphic',
     'easy-thumbnails[svg]',
 ]
+
+
+EXTRA_REQUIREMENTS = {
+    "heif": [
+        "pillow-heif",
+    ],
+}
 
 
 CLASSIFIERS = [
@@ -31,9 +37,8 @@ CLASSIFIERS = [
     'Framework :: Django :: 3.2',
     'Framework :: Django :: 4.0',
     'Framework :: Django :: 4.1',
+    'Framework :: Django :: 4.2',
     'Framework :: Django CMS',
-    'Framework :: Django CMS :: 3.6',
-    'Framework :: Django CMS :: 3.7',
     'Framework :: Django CMS :: 3.8',
     'Framework :: Django CMS :: 3.9',
     'Framework :: Django CMS :: 3.10',
@@ -63,7 +68,8 @@ setup(
     include_package_data=True,
     zip_safe=False,
     install_requires=REQUIREMENTS,
-    python_requires='>=3.6',
+    extras_require=EXTRA_REQUIREMENTS,
+    python_requires='>=3.8',
     classifiers=CLASSIFIERS,
     test_suite='tests.settings.run',
 )

@@ -4,6 +4,7 @@ from django.db import models
 from django.utils.functional import cached_property
 from django.utils.translation import gettext_lazy as _
 
+import easy_thumbnails.utils
 from easy_thumbnails.VIL import Image as VILImage
 
 from .. import settings as filer_settings
@@ -37,6 +38,11 @@ class BaseImage(File):
     _width = models.FloatField(
         null=True,
         blank=True,
+    )
+
+    _transparent = models.BooleanField(
+        null=False,
+        default=False,
     )
 
     default_alt_text = models.CharField(
@@ -77,9 +83,9 @@ class BaseImage(File):
     @classmethod
     def matches_file_type(cls, iname, ifile, mime_type):
         # source: https://www.freeformatter.com/mime-types-list.html
-        image_subtypes = ['gif', 'jpeg', 'png', 'x-png', 'svg+xml']
+        from ..settings import IMAGE_MIME_TYPES
         maintype, subtype = mime_type.split('/')
-        return maintype == 'image' and subtype in image_subtypes
+        return maintype == 'image' and subtype in IMAGE_MIME_TYPES
 
     def file_data_changed(self, post_init=False):
         attrs_updated = super().file_data_changed(post_init=post_init)
@@ -92,14 +98,18 @@ class BaseImage(File):
                 imgfile.seek(0)
                 if self.mime_type == 'image/svg+xml':
                     self._width, self._height = VILImage.load(imgfile).size
+                    self._transparent = True
                 else:
-                    self._width, self._height = PILImage.open(imgfile).size
+                    pil_image = PILImage.open(imgfile)
+                    self._width, self._height = pil_image.size
+                    self._transparent = easy_thumbnails.utils.is_transparent(pil_image)
                 imgfile.seek(0)
             except Exception:
                 if post_init is False:
                     # in case `imgfile` could not be found, unset dimensions
                     # but only if not initialized by loading a fixture file
                     self._width, self._height = None, None
+                    self._transparent = False
         return attrs_updated
 
     def save(self, *args, **kwargs):
@@ -184,12 +194,14 @@ class BaseImage(File):
 
     @property
     def icons(self):
-        required_thumbnails = dict(
-            (size, {'size': (int(size), int(size)),
-                    'crop': True,
-                    'upscale': True,
-                    'subject_location': self.subject_location})
-            for size in filer_settings.FILER_ADMIN_ICON_SIZES)
+        required_thumbnails = {
+            size: {
+                'size': (int(size), int(size)),
+                'crop': True,
+                'upscale': True,
+                'subject_location': self.subject_location,
+            }
+            for size in filer_settings.FILER_ADMIN_ICON_SIZES}
         return self._generate_thumbnails(required_thumbnails)
 
     @property

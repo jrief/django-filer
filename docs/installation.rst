@@ -10,14 +10,21 @@ The easiest way to get ``django-filer`` is simply install it with `pip`_::
 
     $ pip install django-filer
 
+Optional heic support
+---------------------
+
+Currently, django-filer supports upload of heif images (``*.heic``, such as
+retrieved from iOS devices by airdrop) using an optional dependency::
+
+    $ pip install django-filer\[heif\]
+
 
 Dependencies
 ------------
 
-* `Django`_ >= 2.2
-* `django-mptt`_ >=0.6
+* `Django`_ >= 3.2
 * `easy_thumbnails`_ >= 2.0
-* `django-polymorphic`_ >= 0.7
+* `django-polymorphic`_ >= 3.0
 * `Pillow`_ >=2.3.0 (with JPEG and ZLIB support, `PIL`_ may work but is not supported)
 
 ``django.contrib.staticfiles`` is required.
@@ -26,11 +33,10 @@ Please make sure you install `Pillow`_ with JPEG and  ZLIB support installed;
 for further information on Pillow installation and its binary dependencies,
 check `Pillow doc`_.
 
-`django-polymorphic`_ version depends on `Django`_ version:
+If heif support is chosen, django-filer also installs
 
-* for `Django`_ >=2.2 use `django-polymorphic`_ >=2.0
-* for `Django`_ >=3.0 use `django-polymorphic`_ >=2.1
-* for `Django`_ >=3.1 use `django-polymorphic`_ >=3.0
+* pillow-heif
+
 
 Configuration
 -------------
@@ -41,7 +47,6 @@ Add ``"filer"`` and related apps to your project's ``INSTALLED_APPS`` setting an
         ...
         'easy_thumbnails',
         'filer',
-        'mptt',
         ...
     ]
 
@@ -147,7 +152,6 @@ generation errors,  two options are provided to help when working with ``django-
 .. _django-polymorphic: https://github.com/bconstantin/django_polymorphic
 .. _easy_thumbnails: https://github.com/SmileyChris/easy-thumbnails
 .. _sorl.thumbnail: http://thumbnail.sorl.net/
-.. _django-mptt: https://github.com/django-mptt/django-mptt/
 .. _Pillow: http://pypi.python.org/pypi/Pillow/
 .. _Pillow doc: https://pillow.readthedocs.io/en/latest/installation.html
 .. _PIL: http://www.pythonware.com/products/pil/

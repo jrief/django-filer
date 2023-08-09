@@ -38,7 +38,7 @@ def scale_and_crop_with_subject_location(im, size, subject_location=False,
     Like ``easy_thumbnails.processors.scale_and_crop``, but will use the
     coordinates in ``subject_location`` to make sure that that part of the
     image is in the center or at least somewhere on the cropped image.
-    Please not that this does *not* work correctly if the image has been
+    Please note that this does *not* work correctly if the image has been
     resized by a previous processor (e.g ``autocrop``).
 
     ``crop`` needs to be set for this to work, but any special cropping
@@ -54,8 +54,8 @@ def scale_and_crop_with_subject_location(im, size, subject_location=False,
 
     # --snip-- this is a copy and paste of the first few
     #          lines of ``scale_and_crop``
-    source_x, source_y = [float(v) for v in im.size]
-    target_x, target_y = [float(v) for v in size]
+    source_x, source_y = (float(v) for v in im.size)
+    target_x, target_y = (float(v) for v in size)
 
     if crop or not target_x or not target_y:
         scale = max(target_x / source_x, target_y / source_y)
@@ -75,15 +75,20 @@ def scale_and_crop_with_subject_location(im, size, subject_location=False,
         scale *= (100 + int(zoom)) / 100.0
 
     if scale < 1.0 or (scale > 1.0 and upscale):
-        im = im.resize((int(source_x * scale), int(source_y * scale)),
-                       resample=Image.ANTIALIAS)
+        try:
+            im = im.resize((int(source_x * scale), int(source_y * scale)),
+                           resample=Image.LANCZOS)
+        except AttributeError:  # pragma: no cover
+            im = im.resize((int(source_x * scale), int(source_y * scale)),
+                           resample=Image.ANTIALIAS)
+
     # --endsnip-- begin real code
 
     # ===============================
     # subject location aware cropping
     # ===============================
     # res_x, res_y: the resolution of the possibly already resized image
-    res_x, res_y = [float(v) for v in im.size]
+    res_x, res_y = (float(v) for v in im.size)
 
     # subj_x, subj_y: the position of the subject (maybe already re-scaled)
     subj_x = res_x * float(subject_location[0]) / source_x

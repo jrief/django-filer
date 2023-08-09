@@ -11,6 +11,7 @@ from django.utils.http import urlencode
 from django.utils.safestring import mark_safe
 
 from ..models import Folder
+from ..settings import ICON_CSS_LIB
 from ..utils.compatibility import truncate_words
 from ..utils.model_label import get_model_label
 
@@ -53,13 +54,12 @@ class AdminFolderWidget(ForeignKeyRawIdWidget):
         # API to determine the ID dynamically.
         context = {
             'hidden_input': hidden_input,
-            'lookup_url': '%s%s' % (related_url, url),
+            'lookup_url': '{}{}'.format(related_url, url),
             'lookup_name': name,
             'span_id': css_id_description_txt,
             'object': obj,
             'clear_id': '%s_clear' % css_id,
             'descid': css_id_description_txt,
-            'noimg': 'filer/icons/nofile_32x32.png',
             'foldid': css_id_folder,
             'id': css_id,
         }
@@ -81,9 +81,8 @@ class AdminFolderWidget(ForeignKeyRawIdWidget):
         return obj
 
     class Media:
-        js = (
-            'filer/js/addons/popup_handling.js',
-        )
+        css = {"all": ('filer/css/admin_filer.css',) + ICON_CSS_LIB}
+        js = ('filer/js/addons/popup_handling.js',)
 
 
 class AdminFolderFormField(forms.ModelChoiceField):
@@ -115,7 +114,7 @@ class FilerFolderField(models.ForeignKey):
         if "to" in kwargs.keys():  # pragma: no cover
             old_to = get_model_label(kwargs.pop("to"))
             if old_to.lower() != dfl.lower():
-                msg = "%s can only be a ForeignKey to %s; %s passed" % (
+                msg = "{} can only be a ForeignKey to {}; {} passed".format(
                     self.__class__.__name__, dfl, old_to
                 )
                 warnings.warn(msg, SyntaxWarning)

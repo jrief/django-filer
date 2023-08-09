@@ -2,6 +2,65 @@
 CHANGELOG
 =========
 
+3.0.4 (2023-08-04)
+==================
+
+* Fix bug when submitting permission admin form
+* Fix folder select field css of permission admin form
+* Fix requirements (Django>=3.2) in setup.py and docs
+* Update Dutch, Spanish and French locale
+
+3.0.3 (2023-07-21)
+==================
+
+* Fix copy folder being broken after django-mptt removal by @protoroto in https://github.com/django-cms/django-filer/pull/1393
+* fix: crash in the file detail view by @vinitkumar in https://github.com/django-cms/django-filer/pull/1395
+* Fix: actions.js error thrown in js console by @fsbraun in https://github.com/django-cms/django-filer/pull/1397
+
+3.0.2 (2023-07-17)
+==================
+
+* Fix another bug when the the thumbnailer in admin tags crashes because of
+  invalid or missing file
+* Ensure action buttons in directory listing do not get disabled after using
+  cancel or back button if files or folders are selected.
+
+3.0.1 (2023-07-13)
+==================
+
+* Fix a bug that creates a server error when requesting a thumbnail from an
+  invalid or missing file
+* Fix a bug that on some systems webp images were not recognized
+* Add missing css map files
+
+3.0.0 (2023-07-05)
+==================
+
+* Add validation framework to prevent XSS attacks using HTML or SVG files (see docs)
+* Only show uncategorized files to the owner or superuser if permissions are active
+* Add an edit button to the file widget which opens edit file pop-up
+* Refactored directory list view for significant performance increases
+* Remove thumbnail generation from the directory list view request response cycle
+* Support for upload of webp images
+* Optional support for upload of heif images
+* Add Django 4.2 support
+* Add thumbnail view for faster visual management of image libraries
+* Fix File.objects.only() query required for deleting user who own files.
+* Fix several CSS quirks
+* Fix folder widget
+* Remove unused css from delete confirmation view and move file view
+* Add Pillow 10 compatibility
+* Update translations (de/fr/nl)
+
+2.2.5 (2023-06-11)
+==================
+
+* Security patch (https://github.com/django-cms/django-filer/pull/1352):
+  While admin options shown correctly represented the user rights, some admin
+  end-points were available directly. A staff user without any permissions
+  could browse the filer folder structure, list files in a folder, add files,
+  and move files and folders.
+
 2.2.4 (2023-01-13)
 ==================
 * Add Django 4.1 support
@@ -102,7 +161,6 @@ CHANGELOG
 * Fix dropzone error callback for admin fields.
 * Fix #1247: Not owned files in unfiled folder can not be listed if perms are ON.
 * Fix #1184: OSError close file before deletion on file move.
-
 
 2.0.2 (2020-09-10)
 ==================

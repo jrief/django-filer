@@ -1,19 +1,19 @@
 import hashlib
 import mimetypes
 import os
-from datetime import datetime
+from datetime import datetime, timezone
 
 from django.conf import settings
 from django.core.exceptions import ValidationError
 from django.core.files.base import ContentFile
 from django.db import models
 from django.urls import NoReverseMatch, reverse
-from django.utils import timezone
 from django.utils.functional import cached_property
 from django.utils.translation import gettext_lazy as _
 
 from polymorphic.managers import PolymorphicManager
 from polymorphic.models import PolymorphicModel
+from polymorphic.query import PolymorphicQuerySet
 
 from .. import settings as filer_settings
 from ..fields.multistorage_file import MultiStorageFileField
@@ -21,7 +21,16 @@ from . import mixins
 from .foldermodels import Folder
 
 
+class FileQuerySet(PolymorphicQuerySet):
+    def only(self, *fields):
+        fields = set(fields)
+        fields.update(["_file_size", "sha1", "is_public"])
+        return super().only(*fields)
+
+
 class FileManager(PolymorphicManager):
+    queryset_class = FileQuerySet
+
     def find_all_duplicates(self):
         r = {}
         for file_obj in self.all():
@@ -149,9 +158,9 @@ class File(PolymorphicModel, mixins.IconsMixin):
 
     def __str__(self):
         if self.name in ('', None):
-            text = "%s" % (self.original_filename,)
+            text = "{}".format(self.original_filename)
         else:
-            text = "%s" % (self.name,)
+            text = "{}".format(self.name)
         return text
 
     @classmethod
@@ -293,20 +302,20 @@ class File(PolymorphicModel, mixins.IconsMixin):
             text = self.original_filename or 'unnamed file'
         else:
             text = self.name
-        text = "%s" % (text,)
+        text = "{}".format(text)
         return text
 
     def __lt__(self, other):
         return self.label.lower() < other.label.lower()
 
     def has_edit_permission(self, request):
-        return self.has_generic_permission(request, 'edit')
+        return request.user.has_perm("filer.change_file") and self.has_generic_permission(request, 'edit')
 
     def has_read_permission(self, request):
         return self.has_generic_permission(request, 'read')
 
     def has_add_children_permission(self, request):
-        return self.has_generic_permission(request, 'add_children')
+        return request.user.has_perm("filer.add_file") and self.has_generic_permission(request, 'add_children')
 
     def has_generic_permission(self, request, permission_type):
         """
@@ -327,7 +336,7 @@ class File(PolymorphicModel, mixins.IconsMixin):
 
     def get_admin_change_url(self):
         return reverse(
-            'admin:{0}_{1}_change'.format(
+            'admin:{}_{}_change'.format(
                 self._meta.app_label,
                 self._meta.model_name,
             ),
@@ -336,7 +345,7 @@ class File(PolymorphicModel, mixins.IconsMixin):
 
     def get_admin_delete_url(self):
         return reverse(
-            'admin:{0}_{1}_delete'.format(self._meta.app_label, self._meta.model_name),
+            f'admin:{self._meta.app_label}_{self._meta.model_name}_delete',
             args=(self.pk,))
 
     @property
@@ -408,7 +417,7 @@ class File(PolymorphicModel, mixins.IconsMixin):
         """
         folder_path = []
         if self.folder:
-            folder_path.extend(self.folder.get_ancestors())
+            folder_path.extend(self.folder.logical_path)
         folder_path.append(self.logical_folder)
         return folder_path
 
