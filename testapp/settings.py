@@ -18,7 +18,7 @@ BASE_DIR = Path(__file__).resolve().parent.parent
 
 SECRET_KEY = os.getenv('DJANGO_SECRET_KEY', 'secret_key')
 
-DEBUG = True # bool(os.getenv('DJANGO_DEBUG') == 'true')
+DEBUG = os.getenv('DJANGO_DEBUG') in ['true', 'True', '1', 'yes', 'Yes', 'y', 'on', 'On']
 
 ALLOWED_HOSTS = ['*']
 
@@ -74,7 +74,7 @@ WSGI_APPLICATION = 'wsgi.application'
 DATABASES = {
     'default': {
         'ENGINE': 'django.db.backends.sqlite3',
-        'NAME': BASE_DIR / 'db.sqlite3',
+        'NAME': BASE_DIR / 'workdir/db.sqlite3',
     }
 }
 
@@ -88,11 +88,12 @@ TIME_ZONE = 'UTC'
 MIDDLEWARE = [
     'django.middleware.common.CommonMiddleware',
     'django.contrib.sessions.middleware.SessionMiddleware',
-    'django.contrib.auth.middleware.AuthenticationMiddleware',
+    'testapp.middleware.AutoLoginMiddleware',
     'django.contrib.messages.middleware.MessageMiddleware',
-    'django.middleware.locale.LocaleMiddleware',
     'django.middleware.csrf.CsrfViewMiddleware',
 ]
+
+SILENCED_SYSTEM_CHECKS = ['admin.E408']  # required for AutoLoginMiddleware
 
 USE_I18N = True
 
@@ -101,8 +102,6 @@ ROOT_URLCONF = 'testapp.urls'
 STATICFILES_DIRS = [
     ('node_modules', BASE_DIR / 'node_modules'),
 ]
-
-# STATIC_ROOT = Path(os.getenv('DJANGO_STATIC_ROOT', BASE_DIR / 'staticfiles'))
 
 STATIC_URL = '/static/'
 
