@@ -1,5 +1,7 @@
 #filer-admin {
   background-color: papayawhip;
+  height: 500px;
+  padding: 20px;
 }
 #filer-admin .selectable-area {
   position: relative;
@@ -13,7 +15,7 @@
 #filer-admin ul.inode-list {
   list-style: none;
   padding: 0;
-  margin: 20px 50px;
+  margin: 0;
 }
 #filer-admin ul.inode-list > li {
   padding: 0;
@@ -35,7 +37,7 @@
   background-color: lightgrey;
 }
 #filer-admin .drag-overlay ul.inode-list {
-  margin: 0;
+  margin: 0 0 0 -5px;
   padding: 0;
   opacity: 0.65;
 }

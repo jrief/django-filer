@@ -18,7 +18,6 @@ function Inode(props) {
 		attributes,
 		listeners,
 		setNodeRef,
-		transform
 	} = useDraggable({
 		id: props.id,
 	});
@@ -66,12 +65,12 @@ function Folder(props) {
 		id: props.id,
 	});
 
-	function openFolder() {
+	const openFolder = () => {
 		console.log("open folder");
 	}
 
 	return (
-		<Inode {...props}>
+		<Inode {...props} onDoubleClick={openFolder}>
 			<div ref={setNodeRef} className={isOver && active.id !== props.id ? 'droppable drag-over' : 'droppable'}>
 				{props.name}
 			</div>
@@ -109,7 +108,7 @@ export default function FilerAdmin() {
 
 	function selectInode(event: PointerEvent) {
 		let modifier;
-		if (event.detail?.selected) {
+		if ((event.detail as any)?.selected) {
 			modifier = f => ({...f, selected: f.selected || f.id === this.id});
 		} else if (event.shiftKey) {
 			const selectedInodeIndex = inodes.findIndex(f => f.id === this.id);
@@ -139,8 +138,6 @@ export default function FilerAdmin() {
 
 	function handleDragStart(event) {
 		const {active} = event;
-		console.log(`Start dragging ${active.name}`);
-
 		const multiSelected = inodes.some(f => f.selected && f.id === active.id);
 		const draggedInodes= multiSelected
 			? inodes.map(f => ({...f, dragged: f.selected}))
