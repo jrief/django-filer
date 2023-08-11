@@ -4,3 +4,7 @@ from .foldermodels import *  # noqa
 from .imagemodels import *  # noqa
 from .thumbnailoptionmodels import *  # noqa
 from .virtualitems import *  # noqa
+
+# the new models
+from filer.models import access
+from filer.models import nextmodels

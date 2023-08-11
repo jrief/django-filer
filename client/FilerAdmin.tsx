@@ -1,5 +1,6 @@
-import {useRef, useState} from 'react';
+import React, {useRef, useState} from 'react';
 import {restrictToParentElement} from '@dnd-kit/modifiers';
+import {SelectableArea} from './SelectableArea';
 import {
 	DndContext,
 	DragOverlay,
@@ -10,7 +11,6 @@ import {
 	useSensor,
 	useSensors,
 } from '@dnd-kit/core';
-import {SelectableArea} from './SelectableArea';
 
 
 function Inode(props) {
@@ -20,7 +20,9 @@ function Inode(props) {
 		setNodeRef,
 	} = useDraggable({
 		id: props.id,
+		disabled: props.disabled,
 	});
+	const [clickHandler, setClickHandler] = useState(null);
 
 	function cssClasses() {
 		let classes = [];
@@ -30,19 +32,40 @@ function Inode(props) {
 		if (props.dragged) {
 			classes.push('dragging');
 		}
+		if (props.disabled) {
+			classes.push('disabled');
+		}
 		return classes.join(' ');
 	}
 
-	if (props.selectItem)
+	function activateInode(event) {
+		if (event.detail === 1) {
+			setClickHandler(window.setTimeout(() => {
+				props.selectInode.bind(props)(event);
+				setClickHandler(null);
+			}, 150));
+		} else if (event.detail === 2) {
+			if (clickHandler) {
+				window.clearTimeout(clickHandler);
+				setClickHandler(null);
+			}
+			props.selectInode.bind(props)(event);
+		} else if (event.detail.selected) {
+			console.log(event.detail);
+			props.selectInode.bind(props)(event);
+		}
+	}
+
+	if (props.selectInode)
 		return (
-			<li ref={setNodeRef} className={cssClasses()} onClick={props.selectItem.bind(props)} {...listeners} {...attributes}>
+			<li ref={setNodeRef} className={cssClasses()} onClick={activateInode} {...listeners} {...attributes}>
 				{props.children}
 			</li>
 		);
 	else
 		return (
 			<li data-id={props.id}>
-				{props.name}
+				{props.children}
 			</li>
 		);
 }
@@ -51,7 +74,10 @@ function Inode(props) {
 function File(props) {
 	return (
 		<Inode {...props}>
-			{props.name}
+			<figure>
+				<img src={props.thumbnail} />
+				<figcaption>{props.name}</figcaption>
+			</figure>
 		</Inode>
 	);
 }
@@ -63,37 +89,26 @@ function Folder(props) {
 		setNodeRef,
 	} = useDroppable({
 		id: props.id,
+		disabled: props.disabled,
 	});
 
-	const openFolder = () => {
-		console.log("open folder");
-	}
-
 	return (
-		<Inode {...props} onDoubleClick={openFolder}>
+		<Inode {...props}>
 			<div ref={setNodeRef} className={isOver && active.id !== props.id ? 'droppable drag-over' : 'droppable'}>
-				{props.name}
+				<figure>
+					<img src={props.thumbnail} />
+					<figcaption>{props.name}</figcaption>
+				</figure>
 			</div>
 		</Inode>
 	);
 }
 
 
-const initialInodes = [
-	{id: 1, type: 'folder', name: 'A', selected: false, dragged: false},
-	{id: 2, type: 'folder', name: 'B', selected: false, dragged: false},
-	{id: 3, type: 'folder', name: 'C', selected: false, dragged: false},
-	{id: 4, type: 'folder', name: 'D', selected: false, dragged: false},
-	{id: 5, type: 'file', name: 'a', selected: false, dragged: false},
-	{id: 6, type: 'file', name: 'b', selected: false, dragged: false},
-	{id: 7, type: 'file', name: 'c', selected: false, dragged: false},
-	{id: 8, type: 'file', name: 'd', selected: false, dragged: false},
-];
-
-
-export default function FilerAdmin() {
+export default function FilerAdmin(props) {
+	const folderData = props.folderData;
 	const overlayRef = useRef(null);
-	const [inodes, setInodes] = useState(initialInodes);
+	const [inodes, setInodes] = useState(folderData.children);
 	const [lastSelectedInode, setSelectedInode] = useState(-1);
 	const [draggedIds, setDraggedIds] = useState(null);
 	const sensors = useSensors(
@@ -107,10 +122,17 @@ export default function FilerAdmin() {
 	};
 
 	function selectInode(event: PointerEvent) {
+		if (this.disabled)
+			return;
 		let modifier;
-		if ((event.detail as any)?.selected) {
+		if (event.detail === 2) {
+			// double click
+			window.location.assign(this.url);
+		} else if ((event.detail as any)?.selected) {
+			// this is a SelectableArea event
 			modifier = f => ({...f, selected: f.selected || f.id === this.id});
 		} else if (event.shiftKey) {
+			// shift click
 			const selectedInodeIndex = inodes.findIndex(f => f.id === this.id);
 			if (selectedInodeIndex < lastSelectedInode) {
 				modifier = (f, k) => ({...f, selected: k >= selectedInodeIndex && k <= lastSelectedInode});
@@ -118,12 +140,14 @@ export default function FilerAdmin() {
 				modifier = (f, k) => ({...f, selected: k >= lastSelectedInode && k <= selectedInodeIndex});
 			}
 		} else if (event.altKey || event.ctrlKey || event.metaKey) {
+			// alt/ctrl/meta click
 			if (this.selected) {
 				modifier = f => ({...f, selected: f.selected && f.id !== this.id});
 			} else {
 				modifier = f => ({...f, selected: f.selected || f.id === this.id});
 			}
 		} else {
+			// simple click
 			if (this.selected) {
 				modifier = f => ({...f, selected: false});
 			} else {
@@ -189,16 +213,21 @@ export default function FilerAdmin() {
 			<DndContext onDragStart={handleDragStart} onDragEnd={handleDragEnd} onDragCancel={handleDragCancel} sensors={sensors} collisionDetection={pointerWithin}>
 				<ul className="inode-list">
 				{inodes.map(inode =>
-					(inode.type === 'file'
-					? <File key={inode.id} {...inode} selectItem={selectInode} />
-					: <Folder key={inode.id} {...inode} selectItem={selectInode} />
+					(inode.is_folder
+					? <Folder key={inode.id} {...inode} selectInode={selectInode} />
+					: <File key={inode.id} {...inode} selectInode={selectInode} />
 					)
 				)}
 				</ul>
 				<div ref={overlayRef} className="drag-overlay">
 					<DragOverlay wrapperElement="ul" className="inode-list" style={overlayStyle} modifiers={[modifyMovement, restrictToParentElement]}>
 					{inodes.filter(f => f.dragged).map(inode => (
-						<Inode key={inode.id} {...inode} />
+						<Inode key={inode.id} {...inode}>
+							<figure>
+								<img src={inode.thumbnail} />
+								<figcaption>{inode.name}</figcaption>
+							</figure>
+						</Inode>
 					))}
 					</DragOverlay>
 				</div>

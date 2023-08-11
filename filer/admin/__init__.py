@@ -20,3 +20,6 @@ admin.site.register(Clipboard, ClipboardAdmin)
 admin.site.register(Image, ImageAdmin)
 admin.site.register(FolderPermission, PermissionAdmin)
 admin.site.register(ThumbnailOption, ThumbnailOptionAdmin)
+
+# the new models
+from filer.admin import nextadmin

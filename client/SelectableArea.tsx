@@ -1,4 +1,4 @@
-import {useState, useRef} from 'react';
+import React, {useState, useRef} from 'react';
 
 
 function SelectRectangle(props) {
@@ -24,8 +24,6 @@ export function SelectableArea(props) {
 	const handleDragStart = (event) => {
 		if (event.target === areaRef.current || event.target.parentElement === areaRef.current) {
 			const areaRect = areaRef.current.getBoundingClientRect();
-			console.log('handleDragStart');
-			console.log(areaRect);
 			const rectangle = {
 				startX: event.clientX,
 				startY: event.clientY,
@@ -61,7 +59,7 @@ export function SelectableArea(props) {
 		setActiveRect(nextRect);
 	};
 
-	const handleDragEnd = (event) => {
+	const handleDragEnd = () => {
 		function inside(x: number, y: number) : boolean {
 			return (
 				x >= activeRect.left && x <= activeRect.left + activeRect.width
@@ -96,8 +94,12 @@ export function SelectableArea(props) {
 		setActiveRect(null);
 	};
 
+	function handleMouseLeave() {
+		setActiveRect(null);
+	}
+
 	return (
-		<div ref={areaRef} className="selectable-area" onMouseDown={handleDragStart} onMouseMove={handleDragMove} onMouseUp={handleDragEnd}>
+		<div ref={areaRef} className="selectable-area" onMouseDown={handleDragStart} onMouseMove={handleDragMove} onMouseUp={handleDragEnd} onMouseLeave={handleMouseLeave}>
 			{props.children}
 			<SelectRectangle style={activeRect} />
 		</div>

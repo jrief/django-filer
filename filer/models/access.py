@@ -1,7 +1,5 @@
 from django.conf import settings
-from django.contrib.auth import get_user_model
-from django.core.exceptions import ValidationError
-from django.core.files.base import ContentFile, File
+from django.contrib.contenttypes.fields import GenericForeignKey
 from django.db import models
 from django.utils.translation import gettext_lazy as _
 
@@ -17,11 +15,13 @@ class AccessControlEntry(models.Model):
     )
     owner = models.ForeignKey(
         settings.AUTH_USER_MODEL,
+        on_delete=models.CASCADE,
         null=True,
         editable=False,
     )
     group = models.ForeignKey(
         'auth.Group',
+        on_delete=models.CASCADE,
         null=True,
         editable=False,
     )
@@ -31,13 +31,13 @@ class AccessControlEntry(models.Model):
     )
     content_type = models.ForeignKey(
         'contenttypes.ContentType',
-        editable=False,
         on_delete=models.CASCADE,
+        editable=False,
     )
     object_uuid = models.UUIDField(
         editable=False,
     )
-    inode = models.GenericForeignKey('content_type', 'object_id')
+    inode = GenericForeignKey('content_type', 'object_uuid')
 
     class Meta:
         verbose_name = _("Access Control Entry")

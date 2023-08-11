@@ -1,0 +1,10 @@
+{% extends "admin/base_site.html" %}
+
+{% block extrahead %}{{ block.super }}
+<script src="{% url 'admin:jsi18n' %}"></script>
+{{ media }}
+{% endblock %}
+
+{% block footer %}
+{{ folder_data|json_script:"folder-data" }}
+{% endblock %}

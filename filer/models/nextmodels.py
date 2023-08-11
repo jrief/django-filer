@@ -3,35 +3,63 @@ import mimetypes
 import os
 import uuid
 from datetime import datetime
+from itertools import chain
 
 from django.conf import settings
 from django.core.exceptions import ValidationError
 from django.core.files.base import ContentFile, File
 from django.db import models
+from django.db.models.expressions import Value
 from django.urls import NoReverseMatch, reverse
 from django.utils import timezone
-from django.utils.functional import cached_property
+from django.utils.functional import cached_property, classproperty
 from django.utils.translation import gettext_lazy as _
 
 
-class InodeModel(models.Model):
+class InodeManager(models.Manager):
+    @cached_property
+    def root_folder(self):
+        root_folder, _ = self.get_or_create(name="root", parent=None)
+        return root_folder
+
+    def get_queryset(self):
+        return super().get_queryset().select_related('parent')
+
+
+class InodeMetaModel(models.base.ModelBase):
+    _inode_models = {}
+
+    def __new__(cls, *args, **kwargs):
+        new_class = super().__new__(cls, *args, **kwargs)
+        base_labels = [b._meta.label for b in new_class.mro() if hasattr(b, '_meta')]
+        if new_class._meta.abstract is False and 'filer.InodeModel' in base_labels:
+            cls._inode_models[new_class._meta.label] = new_class
+        return new_class
+
+
+class InodeModel(models.Model, metaclass=InodeMetaModel):
+    is_folder = False
+    data_fields = ['id', 'name', 'owner__username', 'created_at', 'last_modified_at', 'is_folder', 'icon_path']
+
     id = models.UUIDField(
         primary_key=True,
         default=uuid.uuid4,
         editable=False,
     )
-    folder = models.ForeignKey(
+    parent = models.ForeignKey(
         'filer.NextFolder',
         verbose_name=_("Folder"),
-        related_name='inodes',
+        related_name='+',
+        editable=False,
         null=True,
         blank=True,
         on_delete=models.PROTECT,
     )
     owner = models.ForeignKey(
         settings.AUTH_USER_MODEL,
-        related_name='owned_%(class)ss',
+        related_name='+',
         on_delete=models.SET_NULL,
+        editable=False,
         null=True,
         blank=True,
         verbose_name=_("Owner"),
@@ -50,29 +78,44 @@ class InodeModel(models.Model):
         auto_now=True,
         editable=False,
     )
-    description = models.TextField(
-        null=True,
-        blank=True,
-        verbose_name=_("Description"),
-    )
-    context = models.JSONField(
-        default=dict,
-        blank=True,
-    )
 
     class Meta:
         abstract = True
+
+    objects = InodeManager()
 
     def __str__(self):
         return self.name
 
 
 class NextFolder(InodeModel):
+    is_folder = True
+    icon_path = 'filer/icons/folder.svg'
+
+    description = models.TextField(
+        null=True,
+        blank=True,
+        verbose_name=_("Description"),
+    )
+
     class Meta:
         app_label = 'filer'
         verbose_name = _("Folder")
-        verbose_name_plural = _("Folders")
-        default_permissions = ['access']
+        verbose_name_plural = _("(Next) Folders")
+        default_permissions = ['read', 'write']
+
+    @cached_property
+    def children_data(self):
+        inodes_chain = []
+        for inode_model in self.__class__._inode_models.values():
+            inodes_chain.append(
+                inode_model.objects.select_related('owner')
+                .filter(parent=self)
+                .annotate(is_folder=Value(inode_model.is_folder, output_field=models.BooleanField()))
+                .annotate(icon_path=Value(inode_model.icon_path, output_field=models.CharField()))
+                .values(*inode_model.data_fields)
+            )
+        return list(chain(*inodes_chain))
 
 
 def mimetype_validator(value):
@@ -81,16 +124,19 @@ def mimetype_validator(value):
         raise ValidationError(msg.format(mimetype=value))
 
 
-class NextFile(InodeModel):
+class AbstractFileModel(InodeModel):
+    accept_mime_types = ['*/*']
+    icon_path = 'filer/icons/file-empty.svg'
+
     file = models.FilePathField(
         _("File"),
-        path=settings.MEDIA_ROOT / 'filer_public',
+        path=str(settings.MEDIA_ROOT / 'filer_public'),
         null=True,
         blank=True,
         recursive=True,
         max_length=255,
     )
-    size = models.BigIntegerField(
+    file_size = models.BigIntegerField(
         _("Size"),
         null=True,
         blank=True,
@@ -113,12 +159,27 @@ class NextFile(InodeModel):
         blank=True,
         null=True,
     )
+    meta_data = models.JSONField(
+        default=dict,
+        blank=True,
+    )
 
     class Meta:
+        abstract = True
         app_label = 'filer'
         verbose_name = _("File")
         verbose_name_plural = _("Files")
         default_permissions = []
+
+    @classproperty
+    def data_fields(cls):
+        data_fields = list(super().data_fields)
+        data_fields.extend(['file', 'file_size', 'sha1', 'mime_type', 'original_filename'])
+        return data_fields
+
+    @property
+    def folder(self):
+        return self.parent
 
     @classmethod
     def matches_file_type(cls, iname, ifile, mime_type):
@@ -136,6 +197,8 @@ class NextFile(InodeModel):
         if not self.name:
             self.name = self.original_filename
 
+
+class NextFile(AbstractFileModel):
     def file_data_changed(self, post_init=False):
         """
         This is called whenever self.file changes (including initial set in __init__).
@@ -228,7 +291,7 @@ class NextFile(InodeModel):
         # to make sure later operations can read the whole file
         self.file.seek(0)
 
-    def save(self, *args, **kwargs):
+    def Xsave(self, *args, **kwargs):
         # check if this is a subclass of "File" or not and set
         # _file_type_plugin_name
         if self.__class__ == File:
@@ -242,15 +305,13 @@ class NextFile(InodeModel):
             self._move_file()
             self._old_is_public = self.is_public
         super().save(*args, **kwargs)
-    save.alters_data = True
 
-    def delete(self, *args, **kwargs):
+    def Xdelete(self, *args, **kwargs):
         # Delete the model before the file
         super().delete(*args, **kwargs)
         # Delete the file if there are no other Files referencing it.
         if not File.objects.filter(file=self.file.name, is_public=self.is_public).exists():
             self.file.delete(False)
-    delete.alters_data = True
 
     @property
     def label(self):
