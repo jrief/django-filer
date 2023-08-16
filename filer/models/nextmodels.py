@@ -12,10 +12,9 @@ from django.core.exceptions import ImproperlyConfigured, ValidationError
 from django.core.files.base import ContentFile, File
 from django.core.files.storage import default_storage
 from django.db import models
-from django.db.models.expressions import ExpressionWrapper, F, Value
 from django.urls import NoReverseMatch, reverse
 from django.utils import timezone
-from django.utils.functional import cached_property, classproperty
+from django.utils.functional import cached_property
 from django.utils.translation import gettext_lazy as _
 
 from filer import settings as filer_settings
@@ -170,9 +169,15 @@ class FileModelManager(InodeManager):
         return obj
 
     def get_model_for(self, mime_type):
-        if model := NextFile._inode_models.get(mime_type):
+        def lookup(mime_type):
+            for model in self.model._inode_models.values():
+                if not model.is_folder and mime_type in model.accept_mime_types:
+                    return model
+            return None
+
+        if model := lookup(mime_type):
             return model
-        if model := NextFile._inode_models.get('/'.join((mime_type.split('/')[0], '*'))):
+        if model := lookup('/'.join((mime_type.split('/')[0], '*'))):
             return model
         return NextFile
 

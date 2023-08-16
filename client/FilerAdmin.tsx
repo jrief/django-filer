@@ -160,20 +160,10 @@ export default function FilerAdmin(props) {
 			}
 		}
 		if (!this.selected) {
-			setSelectedInode(inodes.findIndex(f => f.id === this.id));
+			// remember the last selected inode for shift-click
+			setSelectedInode(inodes.findIndex(inode => inode.id === this.id));
 		}
 		setInodes(inodes.map(modifier));
-	}
-
-	function handleDragStart(event) {
-		const {active} = event;
-		const multiSelected = inodes.some(f => f.selected && f.id === active.id);
-		const draggedInodes= multiSelected
-			? inodes.map(f => ({...f, dragged: f.selected}))
-			: inodes.map(f => ({...f, dragged: f.id === active.id, selected: false}));
-		const firstDraggedIndex = draggedInodes.findIndex(f => f.dragged);
-		setDraggedIds(firstDraggedIndex !== -1 ? [draggedInodes[firstDraggedIndex].id, active.id] : null);
-		setInodes(draggedInodes);
 	}
 
 	async function refreshFolder() {
@@ -182,11 +172,24 @@ export default function FilerAdmin(props) {
 		setInodes(data.inodes);
 	}
 
+	function handleDragStart(event) {
+		const {active} = event;
+		const multiSelected = inodes.some(inode => inode.selected && inode.id === active.id);
+		const draggedInodes= multiSelected
+			? inodes.map(inode => ({...inode, dragged: inode.selected}))
+			: inodes.map(inode => ({...inode, dragged: inode.id === active.id, selected: false}));
+		const firstDraggedIndex = draggedInodes.findIndex(inode => inode.dragged);
+		setDraggedIds(firstDraggedIndex !== -1 ? [draggedInodes[firstDraggedIndex].id, active.id] : null);
+		setInodes(draggedInodes);
+	}
+
 	async function handleDragEnd(event) {
 		const {active, over} = event;
-		setInodes(inodes.map(f => ({...f, dragged: false})));
+		setInodes(inodes.map(inode => ({...inode, dragged: false})));
 		if (over && active.id !== over.id) {
-			const draggedInodes = inodes.filter(f => f.dragged);
+			console.log(active.id);
+			const draggedInodes = inodes.filter(inode => inode.dragged);
+			setInodes(inodes.filter(inode => !inode.dragged));
 			const response = await fetch(folderData.move_inodes_url, {
 				method: 'POST',
 				headers: {
@@ -204,11 +207,11 @@ export default function FilerAdmin(props) {
 	}
 
 	function deselectAll(event) {
-		setInodes(inodes.map(f => ({...f, selected: false})));
+		setInodes(inodes.map(inode => ({...inode, selected: false})));
 	}
 
 	function handleDragCancel() {
-		setInodes(inodes.map(f => ({...f, dragged: false})));
+		setInodes(inodes.map(inode => ({...inode, dragged: false})));
 	}
 
 	function getSelectableElements(areaElement: HTMLElement)  {
