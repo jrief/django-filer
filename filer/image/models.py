@@ -1,3 +1,4 @@
+from django.core.files.storage import default_storage
 from django.db import models
 from django.utils.translation import gettext_lazy as _
 
@@ -14,3 +15,8 @@ class ImageModel(AbstractFileModel):
         # proxy = True
         verbose_name = _('Image')
         verbose_name_plural = _('Images')
+
+    @classmethod
+    def get_thumbnail_url(cls, file_path=None):
+        # TODO: create a real thumbnail
+        return default_storage.url(file_path)

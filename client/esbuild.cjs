@@ -1,4 +1,5 @@
 const { build } = require('esbuild');
+const svgr = require('esbuild-plugin-svgr');
 const buildOptions = require('yargs-parser')(process.argv.slice(2), {
   boolean: ['debug'],
 });
@@ -12,7 +13,7 @@ build({
   splitting: false,
   format: 'esm',
   jsx: 'automatic',
-  plugins: [],
+  plugins: [svgr()],
   loader: {'.svg': 'text', '.jsx': 'jsx' },
   target: ['es2020', 'chrome84', 'firefox84', 'safari14', 'edge84']
 }).catch(() => process.exit(1));

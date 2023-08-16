@@ -4,22 +4,28 @@ import os
 import uuid
 from datetime import datetime
 from itertools import chain
+from pathlib import Path
 
 from django.conf import settings
-from django.core.exceptions import ValidationError
+from django.contrib.staticfiles.storage import staticfiles_storage
+from django.core.exceptions import ImproperlyConfigured, ValidationError
 from django.core.files.base import ContentFile, File
+from django.core.files.storage import default_storage
 from django.db import models
-from django.db.models.expressions import Value
+from django.db.models.expressions import ExpressionWrapper, F, Value
 from django.urls import NoReverseMatch, reverse
 from django.utils import timezone
 from django.utils.functional import cached_property, classproperty
 from django.utils.translation import gettext_lazy as _
 
+from filer import settings as filer_settings
+from filer.fields.thumbnail import ThumbnailField
+
 
 class InodeManager(models.Manager):
     @cached_property
     def root_folder(self):
-        root_folder, _ = self.get_or_create(name="root", parent=None)
+        root_folder, _ = self.get_or_create(parent=None, defaults={'name': "root"})
         return root_folder
 
     def get_queryset(self):
@@ -33,13 +39,31 @@ class InodeMetaModel(models.base.ModelBase):
         new_class = super().__new__(cls, *args, **kwargs)
         base_labels = [b._meta.label for b in new_class.mro() if hasattr(b, '_meta')]
         if new_class._meta.abstract is False and 'filer.InodeModel' in base_labels:
+            if not new_class.is_folder:
+                cls._validate_accept_mime_types(new_class)
             cls._inode_models[new_class._meta.label] = new_class
         return new_class
+
+    def _validate_accept_mime_types(new_class):
+        if not hasattr(new_class, 'accept_mime_types'):
+            msg = "Attribute accept_mime_types not defined for {}"
+            raise ImproperlyConfigured(msg.format(new_class))
+        if not isinstance(new_class.accept_mime_types, (list, tuple)):
+            msg = "Attribute accept_mime_types must be a list or tuple for {}"
+            raise ImproperlyConfigured(msg.format(new_class))
+        if not all(isinstance(mime_type, str) for mime_type in new_class.accept_mime_types):
+            msg = "Attribute accept_mime_types must be a list of strings for {}"
+            raise ImproperlyConfigured(msg.format(new_class))
+        for accept_mime_type in new_class.accept_mime_types:
+            for other in new_class._inode_models.values():
+                if not other.is_folder and accept_mime_type in other.accept_mime_types:
+                    msg = "Attribute accept_mime_types {} already defined in {}"
+                    raise ImproperlyConfigured(msg.format(accept_mime_type, other))
 
 
 class InodeModel(models.Model, metaclass=InodeMetaModel):
     is_folder = False
-    data_fields = ['id', 'name', 'owner__username', 'created_at', 'last_modified_at', 'is_folder', 'icon_path']
+    data_fields = ['id', 'name', 'created_at', 'last_modified_at']
 
     id = models.UUIDField(
         primary_key=True,
@@ -90,7 +114,7 @@ class InodeModel(models.Model, metaclass=InodeMetaModel):
 
 class NextFolder(InodeModel):
     is_folder = True
-    icon_path = 'filer/icons/folder.svg'
+    thumbnail_url = staticfiles_storage.url('filer/icons/folder.svg')
 
     description = models.TextField(
         null=True,
@@ -104,18 +128,10 @@ class NextFolder(InodeModel):
         verbose_name_plural = _("(Next) Folders")
         default_permissions = ['read', 'write']
 
-    @cached_property
-    def children_data(self):
-        inodes_chain = []
-        for inode_model in self.__class__._inode_models.values():
-            inodes_chain.append(
-                inode_model.objects.select_related('owner')
-                .filter(parent=self)
-                .annotate(is_folder=Value(inode_model.is_folder, output_field=models.BooleanField()))
-                .annotate(icon_path=Value(inode_model.icon_path, output_field=models.CharField()))
-                .values(*inode_model.data_fields)
-            )
-        return list(chain(*inodes_chain))
+    def get_children(self, lookup):
+        lookup = dict(lookup, parent=self)
+        children = [inode_model.objects.filter(**lookup) for inode_model in self.__class__._inode_models.values()]
+        return chain(*children)
 
 
 def mimetype_validator(value):
@@ -124,9 +140,46 @@ def mimetype_validator(value):
         raise ValidationError(msg.format(mimetype=value))
 
 
+class FileModelManager(InodeManager):
+    def create(self, uploaded_file, **kwargs):
+        folder = kwargs.pop('folder')
+        kwargs.update(
+            parent=folder,
+            name=uploaded_file.name,
+            mime_type=kwargs.pop('mime_type', uploaded_file.content_type),
+            file_size=uploaded_file.size,
+        )
+        obj = self.model(**kwargs)
+        id = str(obj.id)
+        filer_public = Path(settings.MEDIA_ROOT) / filer_settings.FILER_STORAGES['public']['main']['UPLOAD_TO_PREFIX']
+        upload_dir = filer_public / f'{id[0:2]}/{id[2:4]}/{id}'
+        upload_dir.mkdir(parents=True, exist_ok=True)
+        file_path = upload_dir / uploaded_file.name
+        sha1 = hashlib.sha1()
+        with open(file_path, 'wb+') as destination:
+            for chunk in uploaded_file.chunks():
+                sha1.update(chunk)
+                destination.write(chunk)
+        if default_storage.size(file_path) != obj.file_size:
+            raise IOError("File size mismatch between uploaded file and destination file")
+        obj.sha1 = sha1.hexdigest()
+        obj.file = Path(file_path).relative_to(default_storage.location)
+        obj._for_write = True
+        obj.save(force_insert=True, using=self.db)
+        folder.refresh_from_db(using=self.db)
+        return obj
+
+    def get_model_for(self, mime_type):
+        if model := NextFile._inode_models.get(mime_type):
+            return model
+        if model := NextFile._inode_models.get('/'.join((mime_type.split('/')[0], '*'))):
+            return model
+        return NextFile
+
+
 class AbstractFileModel(InodeModel):
     accept_mime_types = ['*/*']
-    icon_path = 'filer/icons/file-empty.svg'
+    data_fields = InodeModel.data_fields + ['file', 'file_size', 'sha1', 'mime_type', 'original_filename']
 
     file = models.FilePathField(
         _("File"),
@@ -159,6 +212,7 @@ class AbstractFileModel(InodeModel):
         blank=True,
         null=True,
     )
+    thumbnail = ThumbnailField()
     meta_data = models.JSONField(
         default=dict,
         blank=True,
@@ -171,19 +225,15 @@ class AbstractFileModel(InodeModel):
         verbose_name_plural = _("Files")
         default_permissions = []
 
-    @classproperty
-    def data_fields(cls):
-        data_fields = list(super().data_fields)
-        data_fields.extend(['file', 'file_size', 'sha1', 'mime_type', 'original_filename'])
-        return data_fields
+    objects = FileModelManager()
 
     @property
     def folder(self):
         return self.parent
 
     @classmethod
-    def matches_file_type(cls, iname, ifile, mime_type):
-        return True  # I match all files...
+    def get_thumbnail_url(cls, file_path=None):
+        return staticfiles_storage.url('filer/icons/file-unknown.svg')
 
     @cached_property
     def mime_maintype(self):
@@ -278,18 +328,6 @@ class NextFile(AbstractFileModel):
         src_file = storage.open(src_file_name)
         src_file.open()
         return storage.save(destination, ContentFile(src_file.read()))
-
-    def generate_sha1(self):
-        sha = hashlib.sha1()
-        self.file.seek(0)
-        while True:
-            buf = self.file.read(104857600)
-            if not buf:
-                break
-            sha.update(buf)
-        self.sha1 = sha.hexdigest()
-        # to make sure later operations can read the whole file
-        self.file.seek(0)
 
     def Xsave(self, *args, **kwargs):
         # check if this is a subclass of "File" or not and set

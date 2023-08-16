@@ -20,8 +20,9 @@ function SelectRectangle(props) {
 export function SelectableArea(props) {
 	const areaRef = useRef(null);
 	const [activeRect, setActiveRect] = useState(null);
+	const [clickHandler, setClickHandler] = useState(null);
 
-	const handleDragStart = (event) => {
+	const selectionStart = (event) => {
 		if (event.target === areaRef.current || event.target.parentElement === areaRef.current) {
 			const areaRect = areaRef.current.getBoundingClientRect();
 			const rectangle = {
@@ -34,14 +35,22 @@ export function SelectableArea(props) {
 			}
 			console.log(rectangle);
 			setActiveRect(rectangle);
+			setClickHandler(window.setTimeout(() => {
+				selectionDiscard();
+				props.deselectAll();
+				setClickHandler(null);
+				console.log('selection discarded');
+			}, 250));
 		} else {
-			setActiveRect(null);
+			selectionDiscard();
 		}
 	};
 
-	const handleDragMove = (event) => {
+	const selectionExtend = (event) => {
 		if (!activeRect)
 			return;
+		window.clearTimeout(clickHandler);
+		setClickHandler(null);
 		const areaRect = areaRef.current.getBoundingClientRect();
 		const nextRect = {
 			...activeRect,
@@ -59,7 +68,7 @@ export function SelectableArea(props) {
 		setActiveRect(nextRect);
 	};
 
-	const handleDragEnd = () => {
+	const selectionEnd = () => {
 		function inside(x: number, y: number) : boolean {
 			return (
 				x >= activeRect.left && x <= activeRect.left + activeRect.width
@@ -91,15 +100,15 @@ export function SelectableArea(props) {
 				}, 0);
 			}
 		}
-		setActiveRect(null);
+		selectionDiscard();
 	};
 
-	function handleMouseLeave() {
+	function selectionDiscard() {
 		setActiveRect(null);
 	}
 
 	return (
-		<div ref={areaRef} className="selectable-area" onMouseDown={handleDragStart} onMouseMove={handleDragMove} onMouseUp={handleDragEnd} onMouseLeave={handleMouseLeave}>
+		<div ref={areaRef} className="selectable-area" onMouseDown={selectionStart} onMouseMove={selectionExtend} onMouseUp={selectionEnd} onMouseLeave={selectionDiscard}>
 			{props.children}
 			<SelectRectangle style={activeRect} />
 		</div>
