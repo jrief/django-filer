@@ -41,9 +41,8 @@ env/
 coverage/
 .coverage
 .coverage/
-client/**/*.jsx
-client/**/*.js
 dist/
+filer/static/admin/
 workdir/
 
 package-lock.json
