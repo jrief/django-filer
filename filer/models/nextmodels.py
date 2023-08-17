@@ -59,6 +59,17 @@ class InodeMetaModel(models.base.ModelBase):
                     msg = "Attribute accept_mime_types {} already defined in {}"
                     raise ImproperlyConfigured(msg.format(accept_mime_type, other))
 
+    @property
+    def all_models(self):
+        for model in self._inode_models.values():
+            yield model
+
+    @property
+    def file_models(cls):
+        for model in cls._inode_models.values():
+            if not model.is_folder:
+                yield model
+
 
 class InodeModel(models.Model, metaclass=InodeMetaModel):
     is_folder = False
@@ -129,7 +140,7 @@ class NextFolder(InodeModel):
 
     def get_children(self, lookup):
         lookup = dict(lookup, parent=self)
-        children = [inode_model.objects.filter(**lookup) for inode_model in self.__class__._inode_models.values()]
+        children = [inode_model.objects.filter(**lookup) for inode_model in InodeModel.all_models]
         return chain(*children)
 
 
@@ -170,8 +181,8 @@ class FileModelManager(InodeManager):
 
     def get_model_for(self, mime_type):
         def lookup(mime_type):
-            for model in self.model._inode_models.values():
-                if not model.is_folder and mime_type in model.accept_mime_types:
+            for model in InodeModel.file_models:
+                if mime_type in model.accept_mime_types:
                     return model
             return None
 

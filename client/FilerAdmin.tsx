@@ -75,13 +75,20 @@ function Inode(props) {
 }
 
 
+function Figure(props) {
+	return (
+		<figure>
+			<img src={props.thumbnail_url} />
+			<figcaption>{props.name}</figcaption>
+		</figure>
+	);
+}
+
+
 function File(props) {
 	return (
 		<Inode {...props}>
-			<figure>
-				<img src={props.thumbnail_url} />
-				<figcaption>{props.name}</figcaption>
-			</figure>
+			<Figure {...props} />
 		</Inode>
 	);
 }
@@ -99,10 +106,7 @@ function Folder(props) {
 	return (
 		<Inode {...props}>
 			<div ref={setNodeRef} className={isOver && active.id !== props.id ? 'droppable drag-over' : 'droppable'}>
-				<figure>
-					<img src={props.thumbnail_url} />
-					<figcaption>{props.name}</figcaption>
-				</figure>
+				<Figure {...props} />
 			</div>
 		</Inode>
 	);
@@ -158,18 +162,22 @@ export default function FilerAdmin(props) {
 			} else {
 				modifier = f => ({...f, selected: f.id === this.id});
 			}
-		}
-		if (!this.selected) {
-			// remember the last selected inode for shift-click
-			setSelectedInode(inodes.findIndex(inode => inode.id === this.id));
+			if (!this.selected) {
+				// remember the last selected inode for shift-click
+				setSelectedInode(inodes.findIndex(inode => inode.id === this.id));
+			}
 		}
 		setInodes(inodes.map(modifier));
 	}
 
 	async function refreshFolder() {
 		const response = await fetch(folderData.fetch_inodes_url);
-		const data = await response.json();
-		setInodes(data.inodes);
+		if (response.status === 200) {
+			const data = await response.json();
+			setInodes(data.inodes);
+		} else {
+			console.error(response);
+		}
 	}
 
 	function handleDragStart(event) {
@@ -201,8 +209,12 @@ export default function FilerAdmin(props) {
 					target_folder: over.id,
 				}),
 			});
-			const data = await response.json();
-			setInodes(data.inodes);
+			if (response.status === 200) {
+				const data = await response.json();
+				setInodes(data.inodes);
+			} else {
+				console.error(response);
+			}
 		}
 	}
 
@@ -239,13 +251,37 @@ export default function FilerAdmin(props) {
 		};
 	}
 
+	async function addFolder() {
+		const folderName = window.prompt("Enter folder name");
+		if (folderName) {
+			const response = await fetch(folderData.add_folder_url, {
+				method: 'POST',
+				headers: {
+					'Content-Type': 'application/json',
+					'X-CSRFToken': folderData.csrf_token,
+				},
+				body: JSON.stringify({
+					name: folderName,
+				}),
+			});
+			if (response.status === 200) {
+				const data = await response.json();
+				setInodes([...inodes, data.new_folder]);
+			} else {
+				console.error(response);
+			}
+		}
+	}
+
 	const handleChange = (file) => {
 		console.log(file);
 	};
 
 	return (<>
-		<MenuBar parentUrl={folderData.parent_url} openUploader={() => uploaderRef.current.openUploader()} />
-		<h2>{folderData.name}</h2>
+		<MenuBar parentUrl={folderData.parent_url} openUploader={() => uploaderRef.current.openUploader()} addFolder={addFolder} />
+		<ul className="folder-labels">
+			<li className="active">{folderData.name}</li>
+		</ul>
 		<FileUploader ref={uploaderRef} folderData={folderData} refreshFolder={refreshFolder}>
 			<SelectableArea selectableElements={getSelectableElements} deselectAll={deselectAll}>
 				<DndContext onDragStart={handleDragStart} onDragEnd={handleDragEnd} onDragCancel={handleDragCancel} sensors={sensors} collisionDetection={pointerWithin}>
@@ -261,10 +297,7 @@ export default function FilerAdmin(props) {
 						<DragOverlay wrapperElement="ul" className="inode-list drag-overlay" style={overlayStyle} modifiers={[modifyMovement, restrictToParentElement]}>
 						{inodes.filter(f => f.dragged).map(inode => (
 							<Inode key={inode.id} {...inode}>
-								<figure>
-									<img src={inode.thumbnail_url} />
-									<figcaption>{inode.name}</figcaption>
-								</figure>
+								<Figure {...inode} />
 							</Inode>
 						))}
 						</DragOverlay>

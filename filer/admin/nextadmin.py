@@ -17,13 +17,12 @@ from filer.models.nextmodels import InodeModel, NextFolder, NextFile
 
 @admin.register(NextFolder)
 class FolderAdmin(admin.ModelAdmin):
-    _inode_cache, _model_admin_cache = {}, {}
+    _model_admin_cache = {}
 
     def __init__(self, *args, **kwargs):
         print('FolderAdmin.__init__')
         super().__init__(*args, **kwargs)
         self._model_admin_cache
-        self._inode_cache
 
     @property
     def media(self):
@@ -48,6 +47,11 @@ class FolderAdmin(admin.ModelAdmin):
                 '<uuid:folder_id>/move',
                 self.admin_site.admin_view(self.move_inodes),
                 name='filer_move_inodes',
+            ),
+            path(
+                '<uuid:folder_id>/add_folder',
+                self.admin_site.admin_view(self.add_folder),
+                name='filer_add_folder',
             ),
         ]
         urls.extend(super().get_urls())
@@ -82,6 +86,7 @@ class FolderAdmin(admin.ModelAdmin):
             fetch_inodes_url=reverse('admin:filer_fetch_inodes', args=(obj.id,)),
             upload_files_url=reverse('admin:filer_upload_files', args=(obj.id,)),
             move_inodes_url=reverse('admin:filer_move_inodes', args=(obj.id,)),
+            add_folder_url=reverse('admin:filer_add_folder', args=(obj.id,)),
             parent_url=reverse('admin:filer_nextfolder_change', args=(obj.parent_id,)) if obj.parent_id else None,
             name=obj.name,
             csrf_token=get_token(request),
@@ -93,13 +98,9 @@ class FolderAdmin(admin.ModelAdmin):
         )
 
     def get_object(self, request, object_id, from_field=None):
-        if inode_obj := self._inode_cache.get(object_id):
-            return inode_obj
-        for model in self.model._inode_models.values():
+        for model in InodeModel.all_models:
             try:
-                inode_obj = model.objects.get(id=object_id)
-                self._inode_cache[object_id] = inode_obj
-                return inode_obj
+                return model.objects.get(id=object_id)
             except model.DoesNotExist:
                 pass
 
@@ -125,7 +126,7 @@ class FolderAdmin(admin.ModelAdmin):
 
     def get_children_data(self, folder):
         children_data = []
-        for inode_model in InodeModel._inode_models.values():
+        for inode_model in InodeModel.all_models:
             data_fields = inode_model.data_fields + ['owner_name', 'is_folder', 'thumbnail_url']
             children_data.extend(
                 inode_model.objects.select_related('owner')
@@ -175,6 +176,30 @@ class FolderAdmin(admin.ModelAdmin):
             inode.parent = target_folder
             inode.save(update_fields=['parent'])
         return JsonResponse({'inodes': self.get_children_data(source_folder)})
+
+    def add_folder(self, request, folder_id):
+        if request.method != 'POST':
+            return HttpResponseBadRequest(f"Method {request.method} not allowed. Only POST requests are allowed.")
+        if request.content_type != 'application/json':
+            return HttpResponseBadRequest(f"Invalid content-type {request.content_type}. Only application/json is allowed.")
+
+        body = json.loads(request.body)
+        parent_folder = self.get_object(request, folder_id)
+        if not parent_folder:
+            return HttpResponseNotFound(f"Folder {folder_id} not found.")
+        new_folder = NextFolder.objects.create(
+            name=body['name'],
+            parent=parent_folder,
+            owner=request.user,
+        )
+        return JsonResponse({'new_folder': dict(
+            id=new_folder.id,
+            name=new_folder.name,
+            url=reverse('admin:filer_nextfolder_change', args=(new_folder.id,)),
+            owner_name=new_folder.owner.username,
+            is_folder=True,
+            thumbnail_url=NextFolder.thumbnail_url,
+        )})
 
 
 @admin.register(NextFile)

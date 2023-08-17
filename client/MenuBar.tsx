@@ -4,7 +4,7 @@ import ForwardIcon from './icons/forward.svg';
 import UpIcon from './icons/up.svg';
 import ClockIcon from './icons/clock.svg';
 import UploadIcon from './icons/upload.svg';
-
+import AddFolderIcon from './icons/add-folder.svg';
 
 const useLocalStorage = (storageKey, initialState) => {
 	const [value, setValue] = useState(
@@ -38,7 +38,8 @@ export function MenuBar(props) {
 				<li onClick={navigateForward}><ForwardIcon /></li>
 				<li className={props.parentUrl ? null : "disabled"}><a href={props.parentUrl}><UpIcon /></a></li>
 				<li onClick={showHistory}><ClockIcon /></li>
-				<li className="right" onClick={props.openUploader}><UploadIcon /></li>
+				<li className="right" onClick={props.addFolder}><AddFolderIcon /></li>
+				<li onClick={props.openUploader}><UploadIcon /></li>
 			</ul>
 		</nav>
 	);
