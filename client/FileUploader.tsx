@@ -1,9 +1,45 @@
-import React, {forwardRef, useImperativeHandle, useState, useRef} from 'react';
+import React, {forwardRef, useEffect, useImperativeHandle, useState, useRef} from 'react';
+
+
+function DragOverlay(props) {
+	if (props.dragging)
+		return (
+			<div className="progress-overlay">
+				<div className="progress-indicator">
+					<p>Drop files here</p>
+				</div>
+			</div>
+		);
+}
+
+
+function ProgressOverlay(props) {
+	useEffect(() => {
+		console.log('ProgressOverlay.useEffect');
+		console.log(props.uploading);
+	}, [props.uploading]);
+
+	return (
+		<div className="progress-overlay">
+			<div className="progress-indicator">
+				<p>Uploading:</p>
+				<ul className="progress-bar">{uploading.map((file, index) => (
+					<li key={index}>
+						{file.name}
+						<progress value={file.complete} max="1"></progress>
+					</li>
+				))}</ul>
+			</div>
+		</div>
+	);
+}
+
 
 export const FileUploader = forwardRef((props: any, ref) => {
 	const folderData = props.folderData;
 	const inputRef = useRef(null);
 	const [dragging, setDragging] = useState(false);
+	const [uploading, setUploading] = useState([]);
 
 	useImperativeHandle(ref, () => ({
 		openUploader() {
@@ -23,6 +59,12 @@ export const FileUploader = forwardRef((props: any, ref) => {
 		setDragging(true);
 	}
 
+	function handleDragLeave(event) {
+		console.log('handleDragLeave');
+		swallowEvent(event);
+		setDragging(false);
+	}
+
 	function handleDrop(event) {
 		swallowEvent(event);
 		setDragging(false);
@@ -39,15 +81,27 @@ export const FileUploader = forwardRef((props: any, ref) => {
 		}
 		Promise.all(promises).then(() => {
 			console.log('uploaded all files');
+			setUploading([]);
 			props.refreshFolder();
 		}).catch((error) => {
 			console.log('uploadFiles.catch');
 			console.log(error);
+			setUploading([]);
 		});
 	}
 
 	function uploadFile(file) {
 		return new Promise<Response>((resolve, reject) => {
+			function transferStart() {
+				file.complete = 0;
+				console.log(file);
+			}
+
+			function transferProgress(event: ProgressEvent) {
+				file.complete = event.lengthComputable ? event.loaded / event.total : 0;
+				console.log(file);
+			}
+
 			function transferComplete() {
 				console.log('transferComplete');
 				if (request.status === 200) {
@@ -57,7 +111,11 @@ export const FileUploader = forwardRef((props: any, ref) => {
 				}
 			}
 
+			// file.transferComplete = transferComplete;
+			setUploading([...uploading, file]);
 			const request = new XMLHttpRequest();
+			request.addEventListener('loadstart', transferStart);
+			request.upload.addEventListener('progress', transferProgress, false);
 			request.addEventListener('loadend', transferComplete);
 			request.open('POST', folderData.upload_files_url, true);
 			request.setRequestHeader('X-CSRFToken', folderData.csrf_token);
@@ -69,9 +127,10 @@ export const FileUploader = forwardRef((props: any, ref) => {
 	}
 
 	return (
-		<div className="droppable-area" onDragEnter={handleDragEnter} onDragOver={swallowEvent} onDrop={handleDrop}>
+		<div className="droppable-area" onDragEnter={handleDragEnter} onDragOver={swallowEvent} onMouseLeave={handleDragLeave} onDrop={handleDrop}>
 			{props.children}
 			<input type="file" name="file" multiple ref={inputRef} onChange={uploadFiles} />
+			<DragOverlay dragging={dragging} />
 		</div>
 	)
 });
