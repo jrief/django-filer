@@ -46,13 +46,13 @@
 		}
 	}
 
-	ul.folder-labels {
+	ul.folder-tabs {
 		margin: 0;
 		padding: 0;
-		border-bottom: 1px solid grey;
+		border-bottom: 1px solid lightgrey;
 
 		li {
-			margin: 4px auto -1px 24px;
+			margin: 4px auto -1px 15px;
 			padding: 4px 12px;
 			font-size: 16px;
 			font-weight: bold;
@@ -61,7 +61,7 @@
 
 			&.active {
 				background-color: ghostwhite;
-				border: 1px solid grey;
+				border: 1px solid lightgrey;
 				border-top-left-radius: 4px;
 				border-top-right-radius: 4px;
 				border-bottom: 1px solid ghostwhite;
@@ -79,6 +79,31 @@
 			height: 0 !important;
 			position: absolute;
 			bottom: 0;
+		}
+
+		.progress-overlay {
+			position: absolute;
+			top: 0;
+			right: 0;
+			bottom: 0;
+			left: 0;
+			background-color: rgba(255, 255, 255, 0.75);
+			display: flex;
+			flex-direction: column;
+			justify-content: center;
+			align-items: center;
+
+			.progress-indicator {
+				width: 500px;
+				background-color: #a6dce8;
+				border: 2px double black;
+				padding: 20px;
+
+				p {
+					font-weight: bold;
+					font-size: 20px;
+				}
+			}
 		}
 	}
 
@@ -106,7 +131,7 @@
 			padding: 0;
 			user-select: none;
 			border: 1px solid transparent;
-			height: 120px;
+			min-height: 120px;
 			width: 100px;
 			margin: 5px;
 			cursor: pointer;
@@ -149,8 +174,8 @@
 				height: 100%;
 				width: 100%;
 				&.drag-over {
-					background-color: lightcyan;
-					border: 1px dashed darken(lightcyan, 50%);
+					background-color: #cbe5e5;
+					border: 1px solid darken(#cbe5e5, 50%);
 				}
 			}
 		}

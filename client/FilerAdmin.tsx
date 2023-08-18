@@ -278,8 +278,8 @@ export default function FilerAdmin(props) {
 	};
 
 	return (<>
-		<MenuBar parentUrl={folderData.parent_url} openUploader={() => uploaderRef.current.openUploader()} addFolder={addFolder} />
-		<ul className="folder-labels">
+		<MenuBar parentUrl={folderData.parent_url} addFolder={addFolder} openUploader={() => uploaderRef.current.openUploader()} />
+		<ul className="folder-tabs">
 			<li className="active">{folderData.name}</li>
 		</ul>
 		<FileUploader ref={uploaderRef} folderData={folderData} refreshFolder={refreshFolder}>
