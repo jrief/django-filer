@@ -250,7 +250,10 @@ class FolderAdmin(admin.ModelAdmin):
         source_folder = self.get_object(request, folder_id)
         for inode in NextFolder.objects.filter_inodes({'id__in': body['inodes']}):
             inode.copy_to(source_folder, owner=request.user)
-        return JsonResponse({'inodes': self.get_children_data(source_folder)})
+        return JsonResponse({
+            'inodes': self.get_children_data(source_folder),
+            'folders': self.get_favorite_folders(request, source_folder),
+        })
 
     def move_inodes(self, request, folder_id):
         if response := self.check_for_valid_post_request(request, folder_id):

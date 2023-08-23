@@ -15,6 +15,7 @@ import {FileUploader} from './FileUploader';
 import {FolderTabs} from './FolderTabs';
 import {MenuBar} from './MenuBar';
 import {SelectableArea} from './SelectableArea';
+import {set} from "immutable";
 
 
 function Inode(props) {
@@ -118,25 +119,113 @@ function Folder(props) {
 }
 
 
-export default function FilerAdmin(props) {
-	const {folderData} = props;
-	const uploaderRef = useRef(null);
-	const overlayRef = useRef(null);
-	const [inodes, setInodes] = useState(folderData.children);
-	const [lastSelectedInode, setSelectedInode] = useState(-1);
+function DragAndDropArea(props) {
+	const {inodes, setInodes, selectInode, folderData} = props;
 	const [draggedIds, setDraggedIds] = useState(null);
-	const [favoriteFolders, setFavoriteFolders] = useState(folderData.folders);
-	const [isPinned, setIsPinned] = useState(folderData.is_pinned);
+	const overlayRef = useRef(null);
 	const sensors = useSensors(
 		useSensor(PointerSensor, {
 			activationConstraint: {distance: 4},
 		}),
 	);
-	const [clipboard, setClipboard] = useClipboard();
 	const overlayStyle = {
 		height: 'fit-content',
 		width: 'fit-content',
 	};
+
+	function handleDragStart(event) {
+		const {active} = event;
+		const multiSelected = inodes.some(inode => inode.selected && inode.id === active.id);
+		const draggedInodes= multiSelected
+			? inodes.map(inode => ({...inode, dragged: inode.selected}))
+			: inodes.map(inode => ({...inode, dragged: inode.id === active.id, selected: false}));
+		const firstDraggedIndex = draggedInodes.findIndex(inode => inode.dragged);
+		setDraggedIds(firstDraggedIndex !== -1 ? [draggedInodes[firstDraggedIndex].id, active.id] : null);
+		setInodes(draggedInodes);
+	}
+
+	async function handleDragEnd(event) {
+		const {active, over} = event;
+		setInodes(inodes.map(inode => ({...inode, dragged: false})));
+		if (over && active.id !== over.id) {
+			const draggedInodes = inodes.filter(inode => inode.dragged);
+			const response = await fetch(folderData.move_inodes_url, {
+				method: 'POST',
+				headers: {
+					'Content-Type': 'application/json',
+					'X-CSRFToken': folderData.csrf_token,
+				},
+				body: JSON.stringify({
+					inodes: draggedInodes.map(inode => inode.id),
+					target_folder: over.id,
+				}),
+			});
+			if (response.status === 200) {
+				const data = await response.json();
+				setInodes(data.inodes);
+			} else {
+				console.error(response);
+			}
+		}
+	}
+
+	function handleDragCancel() {
+		setInodes(inodes.map(inode => ({...inode, dragged: false})));
+	}
+
+	function modifyMovement(args) {
+		const {transform} = args;
+
+		// If we are dragging multiple elements, we want to offset the drag overlay
+		let offsetX = 0, offsetY = 0;
+		if (overlayRef.current && draggedIds) {
+			const firstDraggedInode = overlayRef.current.querySelector(`.inode-list [data-id="${draggedIds[0]}"]`);
+			const lastDraggedInode = overlayRef.current.querySelector(`.inode-list [data-id="${draggedIds[1]}"]`);
+			if (firstDraggedInode && lastDraggedInode) {
+				offsetX = firstDraggedInode.getBoundingClientRect().left - lastDraggedInode.getBoundingClientRect().left;
+				offsetY = firstDraggedInode.getBoundingClientRect().top - lastDraggedInode.getBoundingClientRect().top;
+			}
+		}
+
+		return {
+			...transform,
+			x: transform.x + offsetX,
+			y: transform.y + offsetY,
+		};
+	}
+
+	return (
+		<DndContext onDragStart={handleDragStart} onDragEnd={handleDragEnd} onDragCancel={handleDragCancel} sensors={sensors} collisionDetection={pointerWithin}>
+			<ul className="inode-list">
+			{inodes.map(inode =>
+				(inode.is_folder
+				? <Folder key={inode.id} {...inode} selectInode={selectInode} />
+				: <File key={inode.id} {...inode} selectInode={selectInode} />
+				)
+			)}
+			</ul>
+			<div ref={overlayRef}>
+				<DragOverlay wrapperElement="ul" className="inode-list drag-overlay" style={overlayStyle} modifiers={[modifyMovement, restrictToParentElement]}>
+				{inodes.filter(f => f.dragged).map(inode => (
+					<Inode key={inode.id} {...inode}>
+						<Figure {...inode} />
+					</Inode>
+				))}
+				</DragOverlay>
+			</div>
+		</DndContext>
+	)
+}
+
+
+export default function FilerAdmin(props) {
+	const {folderData} = props;
+	const uploaderRef = useRef(null);
+	const [inodes, setInodes] = useState(folderData.children);
+	const [lastSelectedInode, setSelectedInode] = useState(-1);
+	const [favoriteFolders, setFavoriteFolders] = useState(folderData.folders);
+	const [isPinned, setIsPinned] = useState(folderData.is_pinned);
+	const [clipboard, setClipboard] = useClipboard();
 
 	function selectInode(event: PointerEvent) {
 		if (this.disabled)
@@ -190,73 +279,12 @@ export default function FilerAdmin(props) {
 		}
 	}
 
-	function handleDragStart(event) {
-		const {active} = event;
-		const multiSelected = inodes.some(inode => inode.selected && inode.id === active.id);
-		const draggedInodes= multiSelected
-			? inodes.map(inode => ({...inode, dragged: inode.selected}))
-			: inodes.map(inode => ({...inode, dragged: inode.id === active.id, selected: false}));
-		const firstDraggedIndex = draggedInodes.findIndex(inode => inode.dragged);
-		setDraggedIds(firstDraggedIndex !== -1 ? [draggedInodes[firstDraggedIndex].id, active.id] : null);
-		setInodes(draggedInodes);
-	}
-
-	async function handleDragEnd(event) {
-		const {active, over} = event;
-		setInodes(inodes.map(inode => ({...inode, dragged: false})));
-		if (over && active.id !== over.id) {
-			const draggedInodes = inodes.filter(inode => inode.dragged);
-			const response = await fetch(folderData.move_inodes_url, {
-				method: 'POST',
-				headers: {
-					'Content-Type': 'application/json',
-					'X-CSRFToken': folderData.csrf_token,
-				},
-				body: JSON.stringify({
-					inodes: draggedInodes.map(inode => inode.id),
-					target_folder: over.id,
-				}),
-			});
-			if (response.status === 200) {
-				const data = await response.json();
-				setInodes(data.inodes);
-			} else {
-				console.error(response);
-			}
-		}
-	}
-
 	function deselectAll(event) {
 		setInodes(inodes.map(inode => ({...inode, selected: false})));
 	}
 
-	function handleDragCancel() {
-		setInodes(inodes.map(inode => ({...inode, dragged: false})));
-	}
-
 	function getSelectableElements(areaElement: HTMLElement)  {
 		return areaElement.querySelectorAll('.inode-list > li');
-	}
-
-	function modifyMovement(args) {
-		const {transform} = args;
-
-		// If we are dragging multiple elements, we want to offset the drag overlay
-		let offsetX = 0, offsetY = 0;
-		if (overlayRef.current && draggedIds) {
-			const firstDraggedInode = overlayRef.current.querySelector(`.inode-list [data-id="${draggedIds[0]}"]`);
-			const lastDraggedInode = overlayRef.current.querySelector(`.inode-list [data-id="${draggedIds[1]}"]`);
-			if (firstDraggedInode && lastDraggedInode) {
-				offsetX = firstDraggedInode.getBoundingClientRect().left - lastDraggedInode.getBoundingClientRect().left;
-				offsetY = firstDraggedInode.getBoundingClientRect().top - lastDraggedInode.getBoundingClientRect().top;
-			}
-		}
-
-		return {
-			...transform,
-			x: transform.x + offsetX,
-			y: transform.y + offsetY,
-		};
 	}
 
 	async function addFolder() {
@@ -390,28 +418,18 @@ export default function FilerAdmin(props) {
 			numSelected={inodes.filter(inode => inode.selected).length}
 		/>
 		<FolderTabs activeFolderId={folderData.id} folders={favoriteFolders} />
-		<FileUploader ref={uploaderRef} folderData={folderData} refreshFolder={refreshFolder}>
-			<SelectableArea selectableElements={getSelectableElements} deselectAll={deselectAll}>
-				<DndContext onDragStart={handleDragStart} onDragEnd={handleDragEnd} onDragCancel={handleDragCancel} sensors={sensors} collisionDetection={pointerWithin}>
-					<ul className="inode-list">
-					{inodes.map(inode =>
-						(inode.is_folder
-						? <Folder key={inode.id} {...inode} selectInode={selectInode} />
-						: <File key={inode.id} {...inode} selectInode={selectInode} />
-						)
-					)}
-					</ul>
-					<div ref={overlayRef}>
-						<DragOverlay wrapperElement="ul" className="inode-list drag-overlay" style={overlayStyle} modifiers={[modifyMovement, restrictToParentElement]}>
-						{inodes.filter(f => f.dragged).map(inode => (
-							<Inode key={inode.id} {...inode}>
-								<Figure {...inode} />
-							</Inode>
-						))}
-						</DragOverlay>
-					</div>
-				</DndContext>
+		<div className="work-area">
+		{folderData.is_trash ? (
+			<SelectableArea selectableElements={getSelectableElements} deselectAll={deselectAll} isTrash={folderData.is_trash}>
+				<DragAndDropArea inodes={inodes} setInodes={setInodes} selectInode={selectInode} folderData={folderData} />
 			</SelectableArea>
-		</FileUploader>
+		) : (
+			<FileUploader ref={uploaderRef} folderData={folderData} refreshFolder={refreshFolder}>
+				<SelectableArea selectableElements={getSelectableElements} deselectAll={deselectAll}>
+					<DragAndDropArea inodes={inodes} setInodes={setInodes} selectInode={selectInode} folderData={folderData} />
+				</SelectableArea>
+			</FileUploader>
+		)}
+		</div>
 	</>);
 }

@@ -107,8 +107,16 @@ export function SelectableArea(props) {
 		setActiveRect(null);
 	}
 
+	function cssClasses() {
+		const classes = ['selectable-area'];
+		if (props.isTrash) {
+			classes.push('trash');
+		}
+		return classes.join(' ');
+	}
+
 	return (
-		<div ref={areaRef} className="selectable-area" onMouseDown={selectionStart} onMouseMove={selectionExtend} onMouseUp={selectionEnd} onMouseLeave={selectionDiscard}>
+		<div ref={areaRef} className={cssClasses()} onMouseDown={selectionStart} onMouseMove={selectionExtend} onMouseUp={selectionEnd} onMouseLeave={selectionDiscard}>
 			{props.children}
 			<SelectRectangle style={activeRect} />
 		</div>
