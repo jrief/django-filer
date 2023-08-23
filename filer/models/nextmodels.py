@@ -21,16 +21,6 @@ from filer import settings as filer_settings
 from filer.fields.thumbnail import ThumbnailField
 
 
-class InodeManager(models.Manager):
-    @cached_property
-    def root_folder(self):
-        root_folder, _ = self.get_or_create(parent=None, defaults={'name': "root"})
-        return root_folder
-
-    def get_queryset(self):
-        return super().get_queryset().select_related('parent')
-
-
 class InodeMetaModel(models.base.ModelBase):
     _inode_models = {}
 
@@ -71,6 +61,16 @@ class InodeMetaModel(models.base.ModelBase):
                 yield model
 
 
+class InodeManager(models.Manager):
+    def get_queryset(self):
+        return super().get_queryset().select_related('parent')
+
+    def filter_inodes(self, lookup=None):
+        lookup = lookup or {}
+        inodes = [inode_model.objects.filter(**lookup) for inode_model in InodeModel.all_models]
+        return chain(*inodes)
+
+
 class InodeModel(models.Model, metaclass=InodeMetaModel):
     is_folder = False
     data_fields = ['id', 'name', 'created_at', 'last_modified_at']
@@ -87,7 +87,7 @@ class InodeModel(models.Model, metaclass=InodeMetaModel):
         editable=False,
         null=True,
         blank=True,
-        on_delete=models.PROTECT,
+        on_delete=models.CASCADE,
     )
     owner = models.ForeignKey(
         settings.AUTH_USER_MODEL,
@@ -116,10 +116,19 @@ class InodeModel(models.Model, metaclass=InodeMetaModel):
     class Meta:
         abstract = True
 
-    objects = InodeManager()
-
     def __str__(self):
         return self.name
+
+
+class FolderModelManager(InodeManager):
+    @cached_property
+    def root_folder(self):
+        root_folder, _ = self.get_or_create(parent=None, name="root")
+        return root_folder
+
+    def get_trash_folder(self, owner):
+        trash_folder, _ = self.get_or_create(parent=None, owner=owner, name="trash")
+        return trash_folder
 
 
 class NextFolder(InodeModel):
@@ -138,10 +147,29 @@ class NextFolder(InodeModel):
         verbose_name_plural = _("(Next) Folders")
         default_permissions = ['read', 'write']
 
-    def get_children(self, lookup):
-        lookup = dict(lookup, parent=self)
+    objects = FolderModelManager()
+
+    @property
+    def num_children(self):
+        num_children = sum(inode_model.objects.filter(parent=self).count() for inode_model in InodeModel.all_models)
+        return num_children
+
+    def get_children(self, lookup=None):
+        lookup = dict(lookup or {}, parent=self)
         children = [inode_model.objects.filter(**lookup) for inode_model in InodeModel.all_models]
         return chain(*children)
+
+    def copy_to(self, folder, **kwargs):
+        """
+        Copies the folder to a destination folder and returns it.
+        """
+        kwargs.setdefault('name', self.name)
+        kwargs.setdefault('owner', self.owner)
+        kwargs.update(parent=folder)
+        obj = self._meta.model.objects.create(**kwargs)
+        for child in self.get_children():
+            child.copy_to(obj, owner=obj.owner)
+        return obj
 
 
 def mimetype_validator(value):
@@ -151,7 +179,7 @@ def mimetype_validator(value):
 
 
 class FileModelManager(InodeManager):
-    def create(self, uploaded_file, **kwargs):
+    def create_from_upload(self, uploaded_file, **kwargs):
         folder = kwargs.pop('folder')
         kwargs.update(
             parent=folder,
@@ -166,7 +194,7 @@ class FileModelManager(InodeManager):
         upload_dir.mkdir(parents=True, exist_ok=True)
         file_path = upload_dir / uploaded_file.name
         sha1 = hashlib.sha1()
-        with open(file_path, 'wb+') as destination:
+        with default_storage.open(file_path, 'wb+') as destination:
             for chunk in uploaded_file.chunks():
                 sha1.update(chunk)
                 destination.write(chunk)
@@ -175,8 +203,8 @@ class FileModelManager(InodeManager):
         obj.sha1 = sha1.hexdigest()
         obj.file = Path(file_path).relative_to(default_storage.location)
         obj._for_write = True
-        obj.save(force_insert=True, using=self.db)
-        folder.refresh_from_db(using=self.db)
+        obj.save(force_insert=True)
+        folder.refresh_from_db()
         return obj
 
     def get_model_for(self, mime_type):
@@ -249,6 +277,9 @@ class AbstractFileModel(InodeModel):
 
     @classmethod
     def get_thumbnail_url(cls, file_path=None):
+        """
+        Hook to return the thumbnail url for a given file.
+        """
         return staticfiles_storage.url('filer/icons/file-unknown.svg')
 
     @cached_property
@@ -258,6 +289,39 @@ class AbstractFileModel(InodeModel):
     @cached_property
     def mime_subtype(self):
         return self.mime_type.split('/')[1]
+
+    def copy_to(self, folder, **kwargs):
+        """
+        Copies the file to a destination folder and returns it.
+        """
+        source = Path(default_storage.path(self.file))
+        kwargs.setdefault('name', self.name)
+        kwargs.setdefault('owner', self.owner)
+        kwargs.update(
+            parent=folder,
+            file_size=self.file_size,
+            sha1=self.sha1,
+            mime_type=self.mime_type,
+            original_filename=self.original_filename,
+        )
+        obj = self._meta.model(**kwargs)
+        id = str(obj.id)
+        filer_public = Path(settings.MEDIA_ROOT) / filer_settings.FILER_STORAGES['public']['main']['UPLOAD_TO_PREFIX']
+        upload_dir = filer_public / f'{id[0:2]}/{id[2:4]}/{id}'
+        upload_dir.mkdir(parents=True, exist_ok=True)
+        file_path = upload_dir / self.name
+        obj.file = Path(file_path).relative_to(default_storage.location)
+        with default_storage.open(source, 'rb') as readhandle:
+            default_storage.save(obj.file, readhandle)
+        obj._for_write = True
+        obj.save(force_insert=True)
+        folder.refresh_from_db()
+        return obj
+
+    def delete(self, using=None, keep_parents=False):
+        if not self._meta.abstract and default_storage.exists(self.file):
+            default_storage.delete(self.file)
+        super().delete(using, keep_parents)
 
     def validate_name(self):
         if not self.name:
@@ -495,3 +559,23 @@ class NextFile(AbstractFileModel):
     @property
     def duplicates(self):
         return File.objects.find_duplicates(self)
+
+
+class PinnedFolder(models.Model):
+    owner = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        related_name='+',
+        on_delete=models.CASCADE,
+        editable=False,
+    )
+    folder = models.ForeignKey(
+        NextFolder,
+        related_name='pinned_folders',
+        on_delete=models.CASCADE,
+        editable=False,
+    )
+    created_at = models.DateTimeField(
+        _("Created at"),
+        auto_now_add=True,
+        editable=False,
+    )

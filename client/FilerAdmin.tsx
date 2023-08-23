@@ -10,7 +10,9 @@ import {
 	useSensor,
 	useSensors,
 } from '@dnd-kit/core';
+import {useClipboard} from './Storage';
 import {FileUploader} from './FileUploader';
+import {FolderTabs} from './FolderTabs';
 import {MenuBar} from './MenuBar';
 import {SelectableArea} from './SelectableArea';
 
@@ -28,14 +30,17 @@ function Inode(props) {
 
 	function cssClasses() {
 		let classes = [];
-		if (props.selected) {
+		if (props.disabled) {
+			classes.push('disabled');
+		} else if (props.selected) {
 			classes.push('selected');
+		} else if (props.copied) {
+			classes.push('copied');
+		} else if (props.cutted) {
+			classes.push('cutted');
 		}
 		if (props.dragged) {
 			classes.push('dragging');
-		}
-		if (props.disabled) {
-			classes.push('disabled');
 		}
 		return classes.join(' ');
 	}
@@ -114,17 +119,20 @@ function Folder(props) {
 
 
 export default function FilerAdmin(props) {
-	const folderData = props.folderData;
+	const {folderData} = props;
 	const uploaderRef = useRef(null);
 	const overlayRef = useRef(null);
 	const [inodes, setInodes] = useState(folderData.children);
 	const [lastSelectedInode, setSelectedInode] = useState(-1);
 	const [draggedIds, setDraggedIds] = useState(null);
+	const [favoriteFolders, setFavoriteFolders] = useState(folderData.folders);
+	const [isPinned, setIsPinned] = useState(folderData.is_pinned);
 	const sensors = useSensors(
 		useSensor(PointerSensor, {
 			activationConstraint: {distance: 4},
 		}),
 	);
+	const [clipboard, setClipboard] = useClipboard();
 	const overlayStyle = {
 		height: 'fit-content',
 		width: 'fit-content',
@@ -136,6 +144,8 @@ export default function FilerAdmin(props) {
 		let modifier;
 		if (event.detail === 2) {
 			// double click
+			if (folderData.is_trash)
+				return;  // prevent editing files in trash folder
 			window.location.assign(this.url);
 		} else if ((event.detail as any)?.selected) {
 			// this is a SelectableArea event
@@ -167,7 +177,7 @@ export default function FilerAdmin(props) {
 				setSelectedInode(inodes.findIndex(inode => inode.id === this.id));
 			}
 		}
-		setInodes(inodes.map(modifier));
+		setInodes(inodes.map((f, k) => ({...modifier(f, k), cutted: false, copied: false})));
 	}
 
 	async function refreshFolder() {
@@ -195,9 +205,7 @@ export default function FilerAdmin(props) {
 		const {active, over} = event;
 		setInodes(inodes.map(inode => ({...inode, dragged: false})));
 		if (over && active.id !== over.id) {
-			console.log(active.id);
 			const draggedInodes = inodes.filter(inode => inode.dragged);
-			setInodes(inodes.filter(inode => !inode.dragged));
 			const response = await fetch(folderData.move_inodes_url, {
 				method: 'POST',
 				headers: {
@@ -205,7 +213,7 @@ export default function FilerAdmin(props) {
 					'X-CSRFToken': folderData.csrf_token,
 				},
 				body: JSON.stringify({
-					moved_inodes: draggedInodes.map(f => f.id),
+					inodes: draggedInodes.map(inode => inode.id),
 					target_folder: over.id,
 				}),
 			});
@@ -253,35 +261,135 @@ export default function FilerAdmin(props) {
 
 	async function addFolder() {
 		const folderName = window.prompt("Enter folder name");
-		if (folderName) {
-			const response = await fetch(folderData.add_folder_url, {
-				method: 'POST',
-				headers: {
-					'Content-Type': 'application/json',
-					'X-CSRFToken': folderData.csrf_token,
-				},
-				body: JSON.stringify({
-					name: folderName,
-				}),
-			});
-			if (response.status === 200) {
-				const data = await response.json();
-				setInodes([...inodes, data.new_folder]);
-			} else {
-				console.error(response);
-			}
+		if (!folderName)
+			return;
+		const response = await fetch(folderData.add_folder_url, {
+			method: 'POST',
+			headers: {
+				'Content-Type': 'application/json',
+				'X-CSRFToken': folderData.csrf_token,
+			},
+			body: JSON.stringify({
+				name: folderName,
+			}),
+		});
+		if (response.status === 200) {
+			const data = await response.json();
+			setInodes([...inodes, data.new_folder]);
+		} else {
+			console.error(response);
 		}
 	}
 
-	const handleChange = (file) => {
-		console.log(file);
-	};
+	function copyInodes() {
+		setClipboard(inodes.filter(inode => inode.selected).map(inode => ({...inode, selected: false, copied: true})));
+		setInodes(inodes.map(inode => ({...inode, copied: inode.selected, selected: false})));
+	}
+
+	function cutInodes() {
+		setClipboard(inodes.filter(inode => inode.selected).map(inode => ({...inode, selected: false, cutted: true})));
+		setInodes(inodes.map(inode => ({...inode, cutted: inode.selected, selected: false})));
+	}
+
+	async function pasteInodes() {
+		let fetchUrl;
+		let pastedInodes = clipboard.filter(inode => inode.copied).map(inode => inode.id);
+		if (pastedInodes.length) {
+			fetchUrl = folderData.copy_inodes_url;
+		} else {
+			pastedInodes = clipboard.filter(inode => inode.cutted).map(inode => inode.id);
+			if (pastedInodes.length) {
+				fetchUrl = folderData.move_inodes_url;
+			}
+		}
+		if (!fetchUrl)
+			return;
+
+		const response = await fetch(fetchUrl, {
+			method: 'POST',
+			headers: {
+				'Content-Type': 'application/json',
+				'X-CSRFToken': folderData.csrf_token,
+			},
+			body: JSON.stringify({
+				inodes: pastedInodes
+			}),
+		});
+		if (response.status === 200) {
+			const data = await response.json();
+			setInodes(data.inodes);
+			setFavoriteFolders(data.folders);
+			setClipboard([]);
+		}
+	}
+
+	async function deleteInodes() {
+		setClipboard([]);
+		const selectedInodes = inodes.filter(inode => inode.selected).map(inode => inode.id);
+		const response = await fetch(folderData.delete_inodes_url, {
+			method: 'POST',
+			headers: {
+				'Content-Type': 'application/json',
+				'X-CSRFToken': folderData.csrf_token,
+			},
+			body: JSON.stringify({
+				inodes: selectedInodes
+			}),
+		});
+		if (response.status === 200) {
+			const data = await response.json();
+			setInodes(data.inodes);
+			setFavoriteFolders(data.folders);
+		}
+	}
+
+	async function eraseTrashFolder() {
+		setClipboard([]);
+		const response = await fetch(folderData.erase_trash_folder_url, {
+			method: 'DELETE',
+			headers: {
+				'X-CSRFToken': folderData.csrf_token,
+			},
+		});
+		if (response.status === 200) {
+			const data = await response.json();
+			window.location.assign(data.success_url);
+		}
+	}
+
+	async function togglePin() {
+		const response = await fetch(folderData.toggle_pin_url, {
+			method: 'POST',
+			headers: {
+				'Content-Type': 'application/json',
+				'X-CSRFToken': folderData.csrf_token,
+			},
+		});
+		if (response.status === 200) {
+			const data = await response.json();
+			setFavoriteFolders(data.folders);
+			setIsPinned(data.is_pinned);
+		}
+	}
 
 	return (<>
-		<MenuBar parentUrl={folderData.parent_url} addFolder={addFolder} openUploader={() => uploaderRef.current.openUploader()} />
-		<ul className="folder-tabs">
-			<li className="active">{folderData.name}</li>
-		</ul>
+		<MenuBar
+			clipboard={clipboard}
+			parentUrl={folderData.parent_url}
+			togglePin={togglePin}
+			addFolder={addFolder}
+			openUploader={() => uploaderRef.current.openUploader()}
+			copyInodes={copyInodes}
+			cutInodes={cutInodes}
+			pasteInodes={pasteInodes}
+			deleteInodes={deleteInodes}
+			eraseTrashFolder={eraseTrashFolder}
+			isRoot={folderData.is_root}
+			isPinned={isPinned}
+			isTrash={folderData.is_trash}
+			numSelected={inodes.filter(inode => inode.selected).length}
+		/>
+		<FolderTabs activeFolderId={folderData.id} folders={favoriteFolders} />
 		<FileUploader ref={uploaderRef} folderData={folderData} refreshFolder={refreshFolder}>
 			<SelectableArea selectableElements={getSelectableElements} deselectAll={deselectAll}>
 				<DndContext onDragStart={handleDragStart} onDragEnd={handleDragEnd} onDragCancel={handleDragCancel} sensors={sensors} collisionDetection={pointerWithin}>
