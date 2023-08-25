@@ -92,13 +92,14 @@ class FolderAdmin(admin.ModelAdmin):
                 id=obj.serializable_value('id'),
                 name=obj.serializable_value('name'),
                 url=reverse('admin:filer_nextfolder_change', args=(obj.id,)),
+                is_root=(obj.id == NextFolder.objects.root_folder.id),
                 **kwargs,
             )
             return data
 
-        folders = []
         url = reverse('admin:filer_nextfolder_change', args=(':',))
         index = url.find(':')
+        folders = []
         folders.extend(
             PinnedFolder.objects.filter(owner=request.user)
                 .select_related('folder')
@@ -110,19 +111,19 @@ class FolderAdmin(admin.ModelAdmin):
                 .annotate(is_pinned=Value(True, output_field=BooleanField()))
         )
         fallback_folder = self.get_fallback_folder(request)
+        root_folder = NextFolder.objects.root_folder
         trash_folder = NextFolder.objects.get_trash_folder(owner=request.user)
-        is_root = fallback_folder.id == NextFolder.objects.root_folder.id
         for f in folders:
-            if current_folder.id == f['id']:
-                folders.insert(0, serialize(fallback_folder, is_root=is_root))
+            if f['id'] == current_folder.id:
+                if fallback_folder.id != root_folder.id or len(folders) == 0:
+                    folders.insert(0, serialize(fallback_folder))
                 break
         else:
             if current_folder.id == trash_folder.id:
-                folders.insert(0, serialize(fallback_folder, is_root=is_root))
+                if fallback_folder.id != root_folder.id or len(folders) == 0:
+                    folders.insert(0, serialize(fallback_folder))
             else:
-                is_root = current_folder.id == NextFolder.objects.root_folder.id
-                folders.insert(0, serialize(current_folder, is_root=is_root))
-                request.session['filer_last_folder_id'] = str(current_folder.id)
+                folders.insert(0, serialize(current_folder))
         if trash_folder.num_children > 0:
             folders.append(serialize(trash_folder, is_trash=True))
         return folders
@@ -146,7 +147,9 @@ class FolderAdmin(admin.ModelAdmin):
         return model_admin.change_view(request, object_id, **kwargs)
 
     def render_change_form(self, request, context, add=False, change=False, form_url='', obj=None):
-        trash_folder = NextFolder.objects.get_trash_folder(owner=request.user)
+        is_root = NextFolder.objects.root_folder.id == obj.id
+        is_trash = NextFolder.objects.get_trash_folder(owner=request.user).id == obj.id
+        favorite_folders = self.get_favorite_folders(request, obj)
         context.update(folder_data=dict(
             id=obj.id,
             name=obj.name,
@@ -157,15 +160,16 @@ class FolderAdmin(admin.ModelAdmin):
             move_inodes_url=reverse('admin:filer_move_inodes', args=(obj.id,)),
             delete_inodes_url=reverse('admin:filer_delete_inodes', args=(obj.id,)),
             erase_trash_folder_url=reverse('admin:filer_erase_trash_folder'),
-            add_folder_url=reverse('admin:filer_add_folder', args=(obj.id,)),
             toggle_pin_url=reverse('admin:filer_toggle_pin', args=(obj.id,)),
+            add_folder_url=reverse('admin:filer_add_folder', args=(obj.id,)),
             parent_url=reverse('admin:filer_nextfolder_change', args=(obj.parent_id,)) if obj.parent_id else None,
-            folders=self.get_favorite_folders(request, obj),
-            is_root=(obj.id == NextFolder.objects.root_folder.id),
-            is_pinned=PinnedFolder.objects.filter(owner=request.user, folder=obj).exists(),
-            is_trash=(obj.id == trash_folder.id),
+            favorite_folders=favorite_folders,
+            is_root=is_root,
+            is_trash=is_trash,
             csrf_token=get_token(request),
         ))
+        if not is_root and not is_trash and not next(filter(lambda f: f['id'] == obj.id, favorite_folders[1:]), None):
+            request.session['filer_last_folder_id'] = str(obj.id)
 
         return TemplateResponse(
             request,
@@ -203,17 +207,19 @@ class FolderAdmin(admin.ModelAdmin):
     def get_children_data(self, folder):
         children_data = []
         for inode_model in InodeModel.all_models:
-            data_fields = inode_model.data_fields + ['owner_name', 'is_folder', 'thumbnail_url']
-            children_data.extend(
-                inode_model.objects.select_related('owner')
-                .filter(parent=folder)
-                .annotate(owner_name=F('owner__username'))
-                .annotate(is_folder=Value(inode_model.is_folder, output_field=BooleanField()))
+            queryset = inode_model.objects.select_related('owner') \
+                .filter(parent=folder) \
+                .annotate(owner_name=F('owner__username')) \
+                .annotate(is_folder=Value(inode_model.is_folder, output_field=BooleanField())) \
                 .annotate(thumbnail_url=Value(NextFolder.thumbnail_url) if inode_model.is_folder else F('thumbnail'))
-                .values(*data_fields)
+            data_fields = inode_model.data_fields + ['owner_name', 'is_folder', 'thumbnail_url']
+            children_data.extend(values | computed for values, computed in zip(
+                queryset.values(*data_fields),
+                ({
+                    'summary': inode_model.summarize(obj),
+                    'url': reverse('admin:filer_nextfolder_change', args=(obj.id,)),
+                } for obj in queryset))
             )
-        for child_data in children_data:
-            child_data['url'] = reverse('admin:filer_nextfolder_change', args=(child_data['id'],))
         return children_data
 
     def fetch_inodes(self, request, folder_id):
@@ -252,7 +258,7 @@ class FolderAdmin(admin.ModelAdmin):
             inode.copy_to(source_folder, owner=request.user)
         return JsonResponse({
             'inodes': self.get_children_data(source_folder),
-            'folders': self.get_favorite_folders(request, source_folder),
+            'favorite_folders': self.get_favorite_folders(request, source_folder),
         })
 
     def move_inodes(self, request, folder_id):
@@ -273,7 +279,7 @@ class FolderAdmin(admin.ModelAdmin):
                 inode.save(update_fields=['parent'])
         return JsonResponse({
             'inodes': self.get_children_data(source_folder),
-            'folders': self.get_favorite_folders(request, source_folder),
+            'favorite_folders': self.get_favorite_folders(request, source_folder),
         })
 
     def delete_inodes(self, request, folder_id):
@@ -290,7 +296,7 @@ class FolderAdmin(admin.ModelAdmin):
             inode.save(update_fields=['parent'])
         return JsonResponse({
             'inodes': self.get_children_data(current_folder),
-            'folders': self.get_favorite_folders(request, current_folder),
+            'favorite_folders': self.get_favorite_folders(request, current_folder),
         })
 
     def erase_trash_folder(self, request):
@@ -306,20 +312,28 @@ class FolderAdmin(admin.ModelAdmin):
     def toggle_pin(self, request, folder_id):
         if response := self.check_for_valid_post_request(request, folder_id):
             return response
-        try:
-            pinned_folder = PinnedFolder.objects.get(owner=request.user, folder_id=folder_id)
-        except PinnedFolder.DoesNotExist:
-            PinnedFolder.objects.create(owner=request.user, folder_id=folder_id)
-            is_pinned = True
+        body = json.loads(request.body)
+        current_folder = self.get_object(request, folder_id)
+        if not (pinned_id := body.get('pinned_id')):
+            return HttpResponseBadRequest("No pinned_id provided.")
+        root_folder = NextFolder.objects.root_folder
+        pinned_folder, created = PinnedFolder.objects.get_or_create(owner=request.user, folder_id=pinned_id)
+        if created:
+            request.session['filer_last_folder_id'] = None
         else:
             pinned_folder.delete()
-            is_pinned = False
-        root_folder = NextFolder.objects.root_folder
-        request.session['filer_last_folder_id'] = str(root_folder.id)
-        current_folder = self.get_object(request, folder_id)
+            if str(folder_id) == pinned_id:
+                # removed the current folder from the pinned folders
+                favorite_folders = self.get_favorite_folders(request, current_folder)
+                if len(favorite_folders) > 0:
+                    success_url = favorite_folders[0]['url']
+                else:
+                    success_url = reverse('admin:filer_nextfolder_change', args=(root_folder.id,))
+                return JsonResponse({
+                    'success_url': success_url,
+                })
         return JsonResponse({
-            'folders': self.get_favorite_folders(request, current_folder),
-            'is_pinned': is_pinned,
+            'favorite_folders': self.get_favorite_folders(request, current_folder),
         })
 
     def add_folder(self, request, folder_id):

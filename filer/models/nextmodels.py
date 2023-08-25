@@ -18,7 +18,7 @@ from django.utils.functional import cached_property
 from django.utils.translation import gettext_lazy as _
 
 from filer import settings as filer_settings
-from filer.fields.thumbnail import ThumbnailField
+from filer.models.fields import ThumbnailField
 
 
 class InodeMetaModel(models.base.ModelBase):
@@ -119,6 +119,13 @@ class InodeModel(models.Model, metaclass=InodeMetaModel):
     def __str__(self):
         return self.name
 
+    @classmethod
+    def summarize(cls, data):
+        """
+        Hook to return the summary for a given file.
+        """
+        return "Foo Bar"
+
 
 class FolderModelManager(InodeManager):
     @cached_property
@@ -153,6 +160,9 @@ class NextFolder(InodeModel):
     def num_children(self):
         num_children = sum(inode_model.objects.filter(parent=self).count() for inode_model in InodeModel.all_models)
         return num_children
+
+    def summarize(self):
+        return "({}, {})".format(self.num_children, _("items"))
 
     def get_children(self, lookup=None):
         lookup = dict(lookup or {}, parent=self)
@@ -322,6 +332,9 @@ class AbstractFileModel(InodeModel):
         if not self._meta.abstract and default_storage.exists(self.file):
             default_storage.delete(self.file)
         super().delete(using, keep_parents)
+
+    def get_file_handle(self):
+        return default_storage.open(self.file)
 
     def validate_name(self):
         if not self.name:

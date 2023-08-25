@@ -3,9 +3,10 @@ import BackIcon from './icons/back.svg';
 import ForwardIcon from './icons/forward.svg';
 import UpIcon from './icons/up.svg';
 import ClockIcon from './icons/clock.svg';
-import PinIcon from './icons/pin.svg';
-import UnpinIcon from './icons/unpin.svg';
 import CopyIcon from './icons/copy.svg';
+import TilesIcon from './icons/tiles.svg';
+import ListIcon from './icons/list.svg';
+import ColumnsIcon from './icons/columns.svg';
 import CutIcon from './icons/cut.svg';
 import PasteIcon from './icons/paste.svg';
 import TrashIcon from './icons/trash-empty.svg';
@@ -24,6 +25,12 @@ export function MenuBar(props) {
 	function showHistory() {
 	}
 
+	function confirmEraseTrashFolder() {
+		if (window.confirm("Erase all files in the trash folder?")) {
+			props.eraseTrashFolder();
+		}
+	}
+
 	return (
 		<nav role="menubar">
 			<ul>
@@ -31,12 +38,12 @@ export function MenuBar(props) {
 				<li onClick={navigateForward}><ForwardIcon /></li>
 				<li className={props.parentUrl ? null : "disabled"}><a href={props.parentUrl}><UpIcon /></a></li>
 				<li onClick={showHistory}><ClockIcon /></li>
-				<li className={props.isRoot || props.isTrash ? "disabled" : null} onClick={props.togglePin} style={{marginRight: 'auto'}}>{
-					props.isPinned ? <UnpinIcon /> : <PinIcon />
-				}</li>
+				<li style={{marginLeft: 'auto'}} onClick={() => props.setLayout('tiles')}><TilesIcon /></li>
+				<li onClick={() => props.setLayout('list')}><ListIcon /></li>
+				<li style={{marginRight: 'auto'}} onClick={() => props.setLayout('columns')}><ColumnsIcon /></li>
 				<li className={props.numSelected ? null : "disabled"} onClick={props.cutInodes} title="Cut"><CutIcon /></li>
 				{props.isTrash ? (
-					<li onClick={props.eraseTrashFolder} title="Erase trash"><EraseIcon /></li>
+					<li className="erase" onClick={confirmEraseTrashFolder} title="Erase trash"><EraseIcon /></li>
 				) : (<>
 					<li className={props.numSelected ? null : "disabled"} onClick={props.copyInodes} title="Copy"><CopyIcon /></li>
 					<li className={props.clipboard.length === 0 ? "disabled" : null} onClick={props.pasteInodes} title="Paste"><PasteIcon /></li>

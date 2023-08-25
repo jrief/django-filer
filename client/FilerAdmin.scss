@@ -2,7 +2,7 @@
 	position: relative;
 }
 
-$trash-background: repeating-linear-gradient(45deg, transparent, transparent 10px, rgba(128, 128, 128, 0.1) 10px, rgba(128, 128, 128, 0.1) 20px);
+$trash-background: repeating-linear-gradient(45deg, transparent, transparent 10px, rgb(248, 248, 248) 10px, rgb(248, 248, 248) 20px);
 
 #content {
 	position: absolute;
@@ -15,6 +15,7 @@ $trash-background: repeating-linear-gradient(45deg, transparent, transparent 10p
 	nav[role="menubar"] {
 		margin-top: 4px;
 		height: 32px;
+
 		ul {
 			list-style: none;
 			box-sizing: border-box;
@@ -29,6 +30,8 @@ $trash-background: repeating-linear-gradient(45deg, transparent, transparent 10p
 				padding: 0;
 				cursor: pointer;
 				border-radius: 3px;
+				width: 32px;
+				height: 32px;
 
 				&:hover:not(.disabled) {
 					background-color: #e6e6e6;
@@ -41,8 +44,13 @@ $trash-background: repeating-linear-gradient(45deg, transparent, transparent 10p
 
 				svg {
 					display: inline-block;
-					width: 32px;
-					height: 28px;
+					width: 30px;
+					height: 30px;
+					margin: 1px;
+				}
+
+				&.erase svg {
+					color: rgb(224, 0, 0);
 				}
 			}
 		}
@@ -76,10 +84,22 @@ $trash-background: repeating-linear-gradient(45deg, transparent, transparent 10p
 			}
 			&.trash {
 				background-image: $trash-background;
+				background-color: transparent;
+				background-attachment: fixed;
 				margin-left: auto;
 			}
 
-			svg {
+			span {
+				cursor: pointer;
+				margin-left: 10px;
+				> svg {
+					height: 16px;
+					width: 16px;
+					margin: -2px 0;
+				}
+			}
+
+			> svg {
 				display: inline-block;
 				width: 24px;
 				height: 24px;
@@ -104,6 +124,41 @@ $trash-background: repeating-linear-gradient(45deg, transparent, transparent 10p
 			height: 0 !important;
 			position: absolute;
 			bottom: 0;
+			padding: 0;
+		}
+
+		.download-droppable {
+			position: absolute;
+			bottom: 0;
+			left: 0;
+			width: 80px;
+			height: 80px;
+			overflow: hidden;
+
+			.quadrant {
+				position: absolute;
+				bottom: -75px;
+				left: -75px;
+				width: 150px;
+				height: 125px;
+				background-color: #e5ffff;
+				border: 2px solid #cbe5e5;
+				border-radius: 50%;
+				transform: scale(0);
+				transition: transform 0.5s ease-in-out;
+
+				svg {
+					width: 32px;
+					height: 32px;
+					position: absolute;
+					bottom: 80px;
+					left: 90px;
+				}
+			}
+
+			&.drag-over .quadrant {
+				background-color: #cbe5e5;
+			}
 		}
 
 		.progress-overlay {
@@ -137,8 +192,12 @@ $trash-background: repeating-linear-gradient(45deg, transparent, transparent 10p
 		width: 100%;
 		height: 100%;
 
-		&.trash .inode-list {
-			background-image: $trash-background;
+		&.trash {
+			.inode-list, li {
+				background-image: $trash-background;
+				background-color: transparent;
+				background-attachment: fixed;
+			}
 		}
 
 		.select-rectangle {
@@ -148,11 +207,77 @@ $trash-background: repeating-linear-gradient(45deg, transparent, transparent 10p
 	}
 
 	ul.inode-list {
-		display: flex;
-		flex-wrap: wrap;
-		flex-direction: row;
-		align-content: flex-start;
-		justify-content: flex-start;
+		margin: 0;
+		overflow-y: scroll;
+		background-color: ghostwhite;
+
+		&.tiles {
+			display: flex;
+			flex-wrap: wrap;
+			flex-direction: row;
+			align-content: flex-start;
+			justify-content: flex-start;
+
+			li {
+				min-height: 120px;
+				width: 100px;
+				margin: 5px;
+
+				figure {
+					height: 100%;
+					display: flex;
+					flex-direction: column;
+					flex-wrap: nowrap;
+					justify-content: space-between;
+					margin: 0;
+
+					img {
+						width: 100%;
+						&[src$=".svg"] {
+							width: 80%;
+							margin-left: auto;
+							margin-right: auto;
+						}
+					}
+
+					figcaption {
+						text-align: center;
+						width: 100%;
+						word-break: break-all;
+					}
+				}
+			}
+		}
+
+		&.list {
+			display: block;
+
+			li {
+				display: grid;
+				grid-template-columns: 1fr 1fr 1fr 1fr;
+				height: 60px;
+
+				img {
+					width: 60px;
+					&[src$=".svg"] {
+						width: 60px;
+					}
+				}
+
+			}
+		}
+
+		&.columns {
+			display: flex;
+			flex-wrap: nowrap;
+			flex-direction: row;
+			align-content: flex-start;
+			justify-content: flex-start;
+
+			li {
+				height: 60px;
+			}
+		}
 
 		li {
 			display: block;
@@ -160,9 +285,6 @@ $trash-background: repeating-linear-gradient(45deg, transparent, transparent 10p
 			padding: 0;
 			user-select: none;
 			border: 1px solid transparent;
-			min-height: 120px;
-			width: 100px;
-			margin: 5px;
 			cursor: pointer;
 
 			&.disabled {
@@ -175,30 +297,6 @@ $trash-background: repeating-linear-gradient(45deg, transparent, transparent 10p
 				background-color: lightgoldenrodyellow;
 			}
 
-			figure {
-				height: 100%;
-				display: flex;
-				flex-direction: column;
-				flex-wrap: nowrap;
-				justify-content: space-between;
-				margin: 0;
-
-				img {
-					width: 100%;
-					&[src$=".svg"] {
-						width: 80%;
-						margin-left: auto;
-						margin-right: auto;
-					}
-				}
-
-				figcaption {
-					text-align: center;
-					width: 100%;
-					word-break: break-all;
-				}
-			}
-
 			>.droppable {
 				height: 100%;
 				width: 100%;
@@ -208,53 +306,56 @@ $trash-background: repeating-linear-gradient(45deg, transparent, transparent 10p
 				}
 			}
 		}
-	}
 
-	ul.inode-list:not(.drag-overlay) {
-		margin: 0;
-		padding: 10px 20px;
-		position: absolute;
-		top: 0;
-		right: 0;
-		bottom: 0;
-		left: 0;
-		overflow-y: scroll;
-		background-color: ghostwhite;
-		> li {
-			position: relative;
-			&.dragging, &.cutted {
-				border: 1px dashed grey;
-				filter: grayscale(100%);
-				opacity: 0.35;
-			}
-			&.copied {
-				border: 1px dashed #30aa00;
-				&::after {
-					content: " ";
-					position: absolute;
-					bottom: 5px;
-					right: 5px;
-					color: #30aa00;
-					width: 2em;
-					height: 2em;
-					background-image: url('data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="rgb(48, 170, 0)"><path d="M6.9998 6V3C6.9998 2.44772 7.44752 2 7.9998 2H19.9998C20.5521 2 20.9998 2.44772 20.9998 3V17C20.9998 17.5523 20.5521 18 19.9998 18H16.9998V20.9991C16.9998 21.5519 16.5499 22 15.993 22H4.00666C3.45059 22 3 21.5554 3 20.9991L3.0026 7.00087C3.0027 6.44811 3.45264 6 4.00942 6H6.9998ZM5.00242 8L5.00019 20H14.9998V8H5.00242ZM8.9998 6H16.9998V16H18.9998V4H8.9998V6Z"></path></svg>');
-					background-repeat: no-repeat;
+		&:not(.drag-overlay) {
+			padding: 10px 20px;
+			position: absolute;
+			top: 0;
+			right: 0;
+			bottom: 0;
+			left: 0;
+
+			> li {
+				position: relative;
+
+				&.dragging, &.cutted {
+					border: 1px dashed grey;
+					filter: grayscale(100%);
+					opacity: 0.35;
+				}
+
+				&.copied {
+					border: 1px dashed #30aa00;
+
+					&::after {
+						content: " ";
+						position: absolute;
+						bottom: 5px;
+						right: 5px;
+						color: #30aa00;
+						width: 2em;
+						height: 2em;
+						background-image: url('data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="rgb(48, 170, 0)"><path d="M6.9998 6V3C6.9998 2.44772 7.44752 2 7.9998 2H19.9998C20.5521 2 20.9998 2.44772 20.9998 3V17C20.9998 17.5523 20.5521 18 19.9998 18H16.9998V20.9991C16.9998 21.5519 16.5499 22 15.993 22H4.00666C3.45059 22 3 21.5554 3 20.9991L3.0026 7.00087C3.0027 6.44811 3.45264 6 4.00942 6H6.9998ZM5.00242 8L5.00019 20H14.9998V8H5.00242ZM8.9998 6H16.9998V16H18.9998V4H8.9998V6Z"></path></svg>');
+						background-repeat: no-repeat;
+					}
 				}
 			}
-		}
-	}
-	ul.inode-list.drag-overlay {
-		margin: 0;
-		padding: 0;
-		opacity: 0.5;
-		border: 1px dashed darken(lightgoldenrodyellow, 50%);
-		background-color: lightgoldenrodyellow;
-		height: fit-content;
-		width: fit-content;
 
-		> li {
-			border-style: dashed;
-			cursor: grabbing;
+			&.dropping + .download-droppable .quadrant {
+				transform: scale(1);
+			}
+		}
+
+		&.drag-overlay {
+			padding: 0;
+			opacity: 0.5;
+			border: 1px dashed darken(lightgoldenrodyellow, 50%);
+			background-color: lightgoldenrodyellow;
+
+			> li {
+				border-color: transparent;
+				cursor: grabbing;
+			}
 		}
 	}
 }

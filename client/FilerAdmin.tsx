@@ -10,12 +10,12 @@ import {
 	useSensor,
 	useSensors,
 } from '@dnd-kit/core';
-import {useClipboard} from './Storage';
+import {useClipboard, useLayout} from './Storage';
 import {FileUploader} from './FileUploader';
 import {FolderTabs} from './FolderTabs';
 import {MenuBar} from './MenuBar';
 import {SelectableArea} from './SelectableArea';
-import {set} from "immutable";
+import DownloadIcon from './icons/download.svg';
 
 
 function Inode(props) {
@@ -81,20 +81,43 @@ function Inode(props) {
 }
 
 
-function Figure(props) {
-	return (
-		<figure>
-			<img src={props.thumbnail_url} />
-			<figcaption>{props.name}</figcaption>
-		</figure>
-	);
+function ListItem(props) {
+	switch (props.layout) {
+		case 'tiles':
+			return (
+				<figure>
+					<img src={props.thumbnail_url} />
+					<figcaption>{props.name}</figcaption>
+				</figure>
+			);
+		case 'list':
+			return (<>
+				<div>
+					<img src={props.thumbnail_url} />
+				</div>
+				<div>
+					{props.owner_name}
+				</div>
+				<div>
+					{props.details}
+				</div>
+				<div>{props.created_at}</div>
+			</>);
+		case 'columns':
+			return (
+				<figure>
+					<img src={props.thumbnail_url} />
+					<figcaption>{props.name}</figcaption>
+				</figure>
+			);
+	}
 }
 
 
 function File(props) {
 	return (
 		<Inode {...props}>
-			<Figure {...props} />
+			<ListItem {...props} />
 		</Inode>
 	);
 }
@@ -109,19 +132,55 @@ function Folder(props) {
 		disabled: props.disabled,
 	});
 
+	function cssClasses() {
+		const classes = ['droppable'];
+		if (isOver && active.id !== props.id) {
+			classes.push('drag-over');
+		}
+		if (props.disabled) {
+			classes.push('disabled');
+		}
+		return classes.join(' ');
+	}
+
 	return (
 		<Inode {...props}>
-			<div ref={setNodeRef} className={isOver && active.id !== props.id ? 'droppable drag-over' : 'droppable'}>
-				<Figure {...props} />
+			<div ref={setNodeRef} className={cssClasses()}>
+				<ListItem {...props} />
 			</div>
 		</Inode>
 	);
 }
 
 
+function DownloadDroppable(props) {
+	const {
+		isOver,
+		setNodeRef,
+	} = useDroppable({
+		id: 'download-droppable',
+	});
+
+	function cssClasses() {
+		const classes = ['download-droppable'];
+		if (isOver) {
+			classes.push('drag-over');
+		}
+		return classes.join(' ');
+	}
+
+	return (
+		<div ref={setNodeRef} className={cssClasses()}>
+			<div className="quadrant"><DownloadIcon /></div>
+		</div>
+	);
+}
+
+
 function DragAndDropArea(props) {
-	const {inodes, setInodes, selectInode, folderData} = props;
+	const {inodes, setInodes, selectInode, folderData, layout} = props;
 	const [draggedIds, setDraggedIds] = useState(null);
+	const downloadLinkRef = useRef(null);
 	const overlayRef = useRef(null);
 	const sensors = useSensors(
 		useSensor(PointerSensor, {
@@ -146,9 +205,13 @@ function DragAndDropArea(props) {
 
 	async function handleDragEnd(event) {
 		const {active, over} = event;
+		setDraggedIds(null);
 		setInodes(inodes.map(inode => ({...inode, dragged: false})));
 		if (over && active.id !== over.id) {
 			const draggedInodes = inodes.filter(inode => inode.dragged);
+			if (over.id === 'download-droppable')
+				return downloadFiles(draggedInodes);
+
 			const response = await fetch(folderData.move_inodes_url, {
 				method: 'POST',
 				headers: {
@@ -173,6 +236,14 @@ function DragAndDropArea(props) {
 		setInodes(inodes.map(inode => ({...inode, dragged: false})));
 	}
 
+	function downloadFiles(draggedInodes) {
+		draggedInodes.forEach(inode => {
+			downloadLinkRef.current.href = inode.url;
+			downloadLinkRef.current.download = inode.name;
+			downloadLinkRef.current.click();
+		});
+	}
+
 	function modifyMovement(args) {
 		const {transform} = args;
 
@@ -194,21 +265,37 @@ function DragAndDropArea(props) {
 		};
 	}
 
+	function cssClasses() {
+		const classes = ['inode-list', layout];
+		if (draggedIds) {
+			classes.push('dropping');
+		}
+		return classes.join(' ');
+	}
+
 	return (
-		<DndContext onDragStart={handleDragStart} onDragEnd={handleDragEnd} onDragCancel={handleDragCancel} sensors={sensors} collisionDetection={pointerWithin}>
-			<ul className="inode-list">
+		<DndContext
+			onDragStart={handleDragStart}
+			onDragEnd={handleDragEnd}
+			onDragCancel={handleDragCancel}
+			sensors={sensors}
+			collisionDetection={pointerWithin}
+		>
+			<ul className={cssClasses()}>
 			{inodes.map(inode =>
 				(inode.is_folder
-				? <Folder key={inode.id} {...inode} selectInode={selectInode} />
-				: <File key={inode.id} {...inode} selectInode={selectInode} />
+				? <Folder key={inode.id} {...inode} selectInode={selectInode} layout={layout} />
+				: <File key={inode.id} {...inode} selectInode={selectInode} layout={layout} />
 				)
 			)}
 			</ul>
+			<DownloadDroppable />
+			<a ref={downloadLinkRef} download="download" hidden />
 			<div ref={overlayRef}>
-				<DragOverlay wrapperElement="ul" className="inode-list drag-overlay" style={overlayStyle} modifiers={[modifyMovement, restrictToParentElement]}>
+				<DragOverlay wrapperElement="ul" className={`inode-list drag-overlay ${layout}`} style={overlayStyle} modifiers={[modifyMovement, restrictToParentElement]}>
 				{inodes.filter(f => f.dragged).map(inode => (
 					<Inode key={inode.id} {...inode}>
-						<Figure {...inode} />
+						<ListItem {...inode} layout={layout} />
 					</Inode>
 				))}
 				</DragOverlay>
@@ -223,8 +310,8 @@ export default function FilerAdmin(props) {
 	const uploaderRef = useRef(null);
 	const [inodes, setInodes] = useState(folderData.children);
 	const [lastSelectedInode, setSelectedInode] = useState(-1);
-	const [favoriteFolders, setFavoriteFolders] = useState(folderData.folders);
-	const [isPinned, setIsPinned] = useState(folderData.is_pinned);
+	const [favoriteFolders, setFavoriteFolders] = useState(folderData.favorite_folders);
+	const [layout, setLayout] = useLayout('tiles');
 	const [clipboard, setClipboard] = useClipboard();
 
 	function selectInode(event: PointerEvent) {
@@ -346,7 +433,7 @@ export default function FilerAdmin(props) {
 		if (response.status === 200) {
 			const data = await response.json();
 			setInodes(data.inodes);
-			setFavoriteFolders(data.folders);
+			setFavoriteFolders(data.favorite_folders);
 			setClipboard([]);
 		}
 	}
@@ -367,7 +454,7 @@ export default function FilerAdmin(props) {
 		if (response.status === 200) {
 			const data = await response.json();
 			setInodes(data.inodes);
-			setFavoriteFolders(data.folders);
+			setFavoriteFolders(data.favorite_folders);
 		}
 	}
 
@@ -385,18 +472,25 @@ export default function FilerAdmin(props) {
 		}
 	}
 
-	async function togglePin() {
+	async function togglePin(pinnedId) {
 		const response = await fetch(folderData.toggle_pin_url, {
 			method: 'POST',
 			headers: {
 				'Content-Type': 'application/json',
 				'X-CSRFToken': folderData.csrf_token,
 			},
+			body: JSON.stringify({
+				pinned_id: pinnedId
+			}),
 		});
 		if (response.status === 200) {
 			const data = await response.json();
-			setFavoriteFolders(data.folders);
-			setIsPinned(data.is_pinned);
+			if (data.success_url) {
+				// unpinned current folder, redirect to success_url
+				window.location.assign(data.success_url);
+				return;
+			}
+			setFavoriteFolders(data.favorite_folders);
 		}
 	}
 
@@ -404,29 +498,40 @@ export default function FilerAdmin(props) {
 		<MenuBar
 			clipboard={clipboard}
 			parentUrl={folderData.parent_url}
-			togglePin={togglePin}
 			addFolder={addFolder}
 			openUploader={() => uploaderRef.current.openUploader()}
+			setLayout={setLayout}
 			copyInodes={copyInodes}
 			cutInodes={cutInodes}
 			pasteInodes={pasteInodes}
 			deleteInodes={deleteInodes}
 			eraseTrashFolder={eraseTrashFolder}
 			isRoot={folderData.is_root}
-			isPinned={isPinned}
 			isTrash={folderData.is_trash}
 			numSelected={inodes.filter(inode => inode.selected).length}
 		/>
-		<FolderTabs activeFolderId={folderData.id} folders={favoriteFolders} />
+		<FolderTabs activeFolderId={folderData.id} folders={favoriteFolders} togglePin={togglePin} />
 		<div className="work-area">
 		{folderData.is_trash ? (
-			<SelectableArea selectableElements={getSelectableElements} deselectAll={deselectAll} isTrash={folderData.is_trash}>
-				<DragAndDropArea inodes={inodes} setInodes={setInodes} selectInode={selectInode} folderData={folderData} />
+			<SelectableArea selectableElements={getSelectableElements} deselectAll={deselectAll} isTrash={true}>
+				<DragAndDropArea
+					inodes={inodes}
+					setInodes={setInodes}
+					selectInode={selectInode}
+					folderData={folderData}
+					layout={layout}
+				/>
 			</SelectableArea>
 		) : (
 			<FileUploader ref={uploaderRef} folderData={folderData} refreshFolder={refreshFolder}>
 				<SelectableArea selectableElements={getSelectableElements} deselectAll={deselectAll}>
-					<DragAndDropArea inodes={inodes} setInodes={setInodes} selectInode={selectInode} folderData={folderData} />
+					<DragAndDropArea
+						inodes={inodes}
+						setInodes={setInodes}
+						selectInode={selectInode}
+						folderData={folderData}
+						layout={layout}
+					/>
 				</SelectableArea>
 			</FileUploader>
 		)}

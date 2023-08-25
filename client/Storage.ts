@@ -15,10 +15,10 @@ export const useClipboard = () => {
 };
 
 
-export const usePinnedFolders = () => {
-	const storageKey = 'filer-pinned-folders';
+export const useLayout = (initial: string) => {
+	const storageKey = 'filer-used-layout';
 	const [value, setValue] = useState(
-		JSON.parse(localStorage.getItem(storageKey)) ?? []
+		JSON.parse(localStorage.getItem(storageKey)) ?? initial
 	);
 
 	useEffect(() => {
