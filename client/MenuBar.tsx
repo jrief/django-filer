@@ -9,7 +9,7 @@ import ListIcon from './icons/list.svg';
 import ColumnsIcon from './icons/columns.svg';
 import CutIcon from './icons/cut.svg';
 import PasteIcon from './icons/paste.svg';
-import TrashIcon from './icons/trash-empty.svg';
+import TrashIcon from './icons/trash.svg';
 import EraseIcon from './icons/erase.svg';
 import AddFolderIcon from './icons/add-folder.svg';
 import UploadIcon from './icons/upload.svg';

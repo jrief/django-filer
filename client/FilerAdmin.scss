@@ -127,10 +127,9 @@ $trash-background: repeating-linear-gradient(45deg, transparent, transparent 10p
 			padding: 0;
 		}
 
-		.download-droppable {
+		.download-droppable, .recycle-droppable {
 			position: absolute;
 			bottom: 0;
-			left: 0;
 			width: 80px;
 			height: 80px;
 			overflow: hidden;
@@ -138,7 +137,6 @@ $trash-background: repeating-linear-gradient(45deg, transparent, transparent 10p
 			.quadrant {
 				position: absolute;
 				bottom: -75px;
-				left: -75px;
 				width: 150px;
 				height: 125px;
 				background-color: #e5ffff;
@@ -151,13 +149,32 @@ $trash-background: repeating-linear-gradient(45deg, transparent, transparent 10p
 					width: 32px;
 					height: 32px;
 					position: absolute;
-					bottom: 80px;
-					left: 90px;
+					bottom: 75px;
 				}
 			}
 
 			&.drag-over .quadrant {
 				background-color: #cbe5e5;
+			}
+		}
+
+		.download-droppable {
+			left: 0;
+			.quadrant {
+				left: -75px;
+				svg {
+					left: 90px;
+				}
+			}
+		}
+
+		.recycle-droppable {
+			right: 0;
+			.quadrant {
+				right: -75px;
+				svg {
+					right: 90px;
+				}
 			}
 		}
 
@@ -341,9 +358,12 @@ $trash-background: repeating-linear-gradient(45deg, transparent, transparent 10p
 				}
 			}
 
-			&.dropping + .download-droppable .quadrant {
+			&.dropping ~ :is(.download-droppable, .recycle-droppable) .quadrant {
 				transform: scale(1);
 			}
+			//&.dropping ~ .recycle-droppable .quadrant {
+			//	transform: scale(1);
+			//}
 		}
 
 		&.drag-overlay {

@@ -16,6 +16,7 @@ import {FolderTabs} from './FolderTabs';
 import {MenuBar} from './MenuBar';
 import {SelectableArea} from './SelectableArea';
 import DownloadIcon from './icons/download.svg';
+import TrashIcon from './icons/trash.svg';
 
 
 function Inode(props) {
@@ -153,16 +154,17 @@ function Folder(props) {
 }
 
 
-function DownloadDroppable(props) {
+function AlternativeDroppable(props) {
+	const {id, className, children} = props;
 	const {
 		isOver,
 		setNodeRef,
 	} = useDroppable({
-		id: 'download-droppable',
+		id: id,
 	});
 
 	function cssClasses() {
-		const classes = ['download-droppable'];
+		const classes = [className];
 		if (isOver) {
 			classes.push('drag-over');
 		}
@@ -171,14 +173,14 @@ function DownloadDroppable(props) {
 
 	return (
 		<div ref={setNodeRef} className={cssClasses()}>
-			<div className="quadrant"><DownloadIcon /></div>
+			<div className="quadrant">{children}</div>
 		</div>
 	);
 }
 
 
 function DragAndDropArea(props) {
-	const {inodes, setInodes, selectInode, folderData, layout} = props;
+	const {inodes, setInodes, setFavoriteFolders, selectInode, folderData, layout} = props;
 	const [draggedIds, setDraggedIds] = useState(null);
 	const downloadLinkRef = useRef(null);
 	const overlayRef = useRef(null);
@@ -211,8 +213,8 @@ function DragAndDropArea(props) {
 			const draggedInodes = inodes.filter(inode => inode.dragged);
 			if (over.id === 'download-droppable')
 				return downloadFiles(draggedInodes);
-
-			const response = await fetch(folderData.move_inodes_url, {
+			const fetchUrl = over.id === 'recycle-droppable' ? folderData.delete_inodes_url : folderData.move_inodes_url;
+			const response = await fetch(fetchUrl, {
 				method: 'POST',
 				headers: {
 					'Content-Type': 'application/json',
@@ -226,6 +228,7 @@ function DragAndDropArea(props) {
 			if (response.status === 200) {
 				const data = await response.json();
 				setInodes(data.inodes);
+				setFavoriteFolders(data.favorite_folders);
 			} else {
 				console.error(response);
 			}
@@ -289,8 +292,15 @@ function DragAndDropArea(props) {
 				)
 			)}
 			</ul>
-			<DownloadDroppable />
+			{folderData.is_trash ? null : (<>
+			<AlternativeDroppable id="download-droppable" className="download-droppable">
+				<DownloadIcon />
+			</AlternativeDroppable>
 			<a ref={downloadLinkRef} download="download" hidden />
+			<AlternativeDroppable id="recycle-droppable" className="recycle-droppable">
+				<TrashIcon />
+			</AlternativeDroppable>
+			</>)}
 			<div ref={overlayRef}>
 				<DragOverlay wrapperElement="ul" className={`inode-list drag-overlay ${layout}`} style={overlayStyle} modifiers={[modifyMovement, restrictToParentElement]}>
 				{inodes.filter(f => f.dragged).map(inode => (
@@ -528,6 +538,7 @@ export default function FilerAdmin(props) {
 					<DragAndDropArea
 						inodes={inodes}
 						setInodes={setInodes}
+						setFavoriteFolders={setFavoriteFolders}
 						selectInode={selectInode}
 						folderData={folderData}
 						layout={layout}

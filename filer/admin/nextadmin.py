@@ -168,8 +168,11 @@ class FolderAdmin(admin.ModelAdmin):
             is_trash=is_trash,
             csrf_token=get_token(request),
         ))
-        if not is_root and not is_trash and not next(filter(lambda f: f['id'] == obj.id, favorite_folders[1:]), None):
-            request.session['filer_last_folder_id'] = str(obj.id)
+        if not is_root and not is_trash:
+            if next(filter(lambda f: f['id'] == obj.id, favorite_folders[1:]), None):
+                request.session['filer_last_folder_id'] = None
+            else:
+                request.session['filer_last_folder_id'] = str(obj.id)
 
         return TemplateResponse(
             request,
