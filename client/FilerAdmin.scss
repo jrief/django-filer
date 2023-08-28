@@ -322,6 +322,15 @@ $trash-background: repeating-linear-gradient(45deg, transparent, transparent 10p
 					border: 1px solid darken(#cbe5e5, 50%);
 				}
 			}
+
+			textarea {
+				border: none;
+				background-color: transparent;
+				margin: 0;
+				width: 100%;
+				overflow: hidden;
+				resize: none;
+			}
 		}
 
 		&:not(.drag-overlay) {

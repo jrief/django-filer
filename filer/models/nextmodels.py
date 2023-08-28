@@ -157,6 +157,10 @@ class NextFolder(InodeModel):
     objects = FolderModelManager()
 
     @property
+    def folder(self):
+        return self
+
+    @property
     def num_children(self):
         num_children = sum(inode_model.objects.filter(parent=self).count() for inode_model in InodeModel.all_models)
         return num_children

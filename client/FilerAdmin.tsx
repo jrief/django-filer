@@ -83,12 +83,22 @@ function Inode(props) {
 
 
 function ListItem(props) {
+	function changeName(event) {
+		if (event.target.value !== props.name) {
+			props.changeInode({...props, name: event.target.value});
+		} else if (event.type === 'blur') {
+			props.changeInode(props, true);
+		}
+	}
+
 	switch (props.layout) {
 		case 'tiles':
 			return (
 				<figure>
 					<img src={props.thumbnail_url} />
-					<figcaption>{props.name}</figcaption>
+					<figcaption>
+						<textarea name={`inode-${props.id}`} value={props.name} onChange={changeName} onBlur={changeName}></textarea>
+					</figcaption>
 				</figure>
 			);
 		case 'list':
@@ -203,6 +213,7 @@ function DragAndDropArea(props) {
 		const firstDraggedIndex = draggedInodes.findIndex(inode => inode.dragged);
 		setDraggedIds(firstDraggedIndex !== -1 ? [draggedInodes[firstDraggedIndex].id, active.id] : null);
 		setInodes(draggedInodes);
+		console.log(draggedInodes);
 	}
 
 	async function handleDragEnd(event) {
@@ -237,6 +248,27 @@ function DragAndDropArea(props) {
 
 	function handleDragCancel() {
 		setInodes(inodes.map(inode => ({...inode, dragged: false})));
+	}
+
+	async function changeInode(newInode, persit?: boolean) {
+		if (persit) {
+			const response = await fetch(newInode.url, {
+				method: 'POST',
+				headers: {
+					'Content-Type': 'application/json',
+					'X-CSRFToken': folderData.csrf_token,
+				},
+				body: JSON.stringify(newInode),
+			});
+			if (response.status === 200) {
+				const data = await response.json();
+				setInodes(data.inodes);
+				setFavoriteFolders(data.favorite_folders);
+			} else {
+				console.error(response);
+			}
+		}
+		setInodes(inodes.map(inode => inode.id === newInode.id ? newInode : inode));
 	}
 
 	function downloadFiles(draggedInodes) {
@@ -287,11 +319,12 @@ function DragAndDropArea(props) {
 			<ul className={cssClasses()}>
 			{inodes.map(inode =>
 				(inode.is_folder
-				? <Folder key={inode.id} {...inode} selectInode={selectInode} layout={layout} />
-				: <File key={inode.id} {...inode} selectInode={selectInode} layout={layout} />
+				? <Folder key={inode.id} {...inode} selectInode={selectInode} layout={layout} changeInode={changeInode} />
+				: <File key={inode.id} {...inode} selectInode={selectInode} layout={layout} changeInode={changeInode} />
 				)
 			)}
 			</ul>
+
 			{folderData.is_trash ? null : (<>
 			<AlternativeDroppable id="download-droppable" className="download-droppable">
 				<DownloadIcon />
@@ -301,6 +334,7 @@ function DragAndDropArea(props) {
 				<TrashIcon />
 			</AlternativeDroppable>
 			</>)}
+
 			<div ref={overlayRef}>
 				<DragOverlay wrapperElement="ul" className={`inode-list drag-overlay ${layout}`} style={overlayStyle} modifiers={[modifyMovement, restrictToParentElement]}>
 				{inodes.filter(f => f.dragged).map(inode => (
@@ -318,7 +352,7 @@ function DragAndDropArea(props) {
 export default function FilerAdmin(props) {
 	const {folderData} = props;
 	const uploaderRef = useRef(null);
-	const [inodes, setInodes] = useState(folderData.children);
+	const [inodes, setInodes] = useState(folderData.inodes);
 	const [lastSelectedInode, setSelectedInode] = useState(-1);
 	const [favoriteFolders, setFavoriteFolders] = useState(folderData.favorite_folders);
 	const [layout, setLayout] = useLayout('tiles');
