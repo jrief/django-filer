@@ -213,7 +213,7 @@ class FolderAdmin(InodeAdmin):
             add_folder_url=reverse('admin:filer_add_folder', args=(obj.id,)),
             parent_url=reverse('admin:filer_nextfolder_change', args=(obj.parent_id,)) if obj.parent_id else None,
             favorite_folders=favorite_folders,
-            legends=legends,
+            legends=self._legends,
             is_root=is_root,
             is_trash=is_trash,
             csrf_token=get_token(request),
