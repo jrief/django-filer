@@ -69,7 +69,7 @@ function Inode(props) {
 
 	if (props.selectInode)
 		return (
-			<li ref={setNodeRef} className={cssClasses()} onClick={activateInode} {...listeners} {...attributes}>
+			<li ref={setNodeRef} data-id={props.id} className={cssClasses()} onClick={activateInode} {...listeners} {...attributes}>
 				{props.children}
 			</li>
 		);
@@ -83,6 +83,23 @@ function Inode(props) {
 
 
 function ListItem(props) {
+	const [focusHandler, setFocusHandler] = useState(null);
+
+	function handleFocus(event) {
+		// enforce two slow clicks to focus the textarea
+		if (!(event.target instanceof HTMLTextAreaElement))
+			return;
+		if (!focusHandler) {
+			event.target.blur();
+		}
+		setFocusHandler(window.setTimeout(() => {
+			if (focusHandler) {
+				window.clearTimeout(focusHandler);
+			}
+			setFocusHandler(null);
+		}, 1500));
+	}
+
 	function changeName(event) {
 		if (event.target.value !== props.name) {
 			props.changeInode({...props, name: event.target.value});
@@ -97,7 +114,7 @@ function ListItem(props) {
 				<figure>
 					<img src={props.thumbnail_url} />
 					<figcaption>
-						<textarea name={`inode-${props.id}`} value={props.name} onChange={changeName} onBlur={changeName}></textarea>
+						<textarea name={`inode-${props.id}`} value={props.name} onChange={changeName} onFocus={handleFocus} onBlur={changeName}></textarea>
 					</figcaption>
 				</figure>
 			);
@@ -107,12 +124,16 @@ function ListItem(props) {
 					<img src={props.thumbnail_url} />
 				</div>
 				<div>
+					<textarea name={`inode-${props.id}`} value={props.name} onChange={changeName} onFocus={handleFocus} onBlur={changeName}></textarea>
+				</div>
+				<div>
 					{props.owner_name}
 				</div>
 				<div>
 					{props.details}
 				</div>
 				<div>{props.created_at}</div>
+				<div>{props.mime_type}</div>
 			</>);
 		case 'columns':
 			return (
@@ -128,7 +149,9 @@ function ListItem(props) {
 function File(props) {
 	return (
 		<Inode {...props}>
-			<ListItem {...props} />
+			<div className="inode">
+				<ListItem {...props} />
+			</div>
 		</Inode>
 	);
 }
@@ -144,7 +167,7 @@ function Folder(props) {
 	});
 
 	function cssClasses() {
-		const classes = ['droppable'];
+		const classes = ['inode'];
 		if (isOver && active.id !== props.id) {
 			classes.push('drag-over');
 		}
@@ -191,9 +214,10 @@ function AlternativeDroppable(props) {
 
 function DragAndDropArea(props) {
 	const {inodes, setInodes, setFavoriteFolders, selectInode, folderData, layout} = props;
-	const [draggedIds, setDraggedIds] = useState(null);
+	const listRef = useRef(null);
 	const downloadLinkRef = useRef(null);
 	const overlayRef = useRef(null);
+	const [draggedIds, setDraggedIds] = useState(null);
 	const sensors = useSensors(
 		useSensor(PointerSensor, {
 			activationConstraint: {distance: 4},
@@ -316,7 +340,19 @@ function DragAndDropArea(props) {
 			sensors={sensors}
 			collisionDetection={pointerWithin}
 		>
-			<ul className={cssClasses()}>
+			<ul ref={listRef} className={cssClasses()}>
+			{layout === 'list' ? (
+				<li className="header">
+					<div className="inode">
+						<div></div>
+						<div>Name</div>
+						<div>Owner</div>
+						<div>Details</div>
+						<div>Created at</div>
+						<div>Mime type</div>
+					</div>
+				</li>
+			) : null}
 			{inodes.map(inode =>
 				(inode.is_folder
 				? <Folder key={inode.id} {...inode} selectInode={selectInode} layout={layout} changeInode={changeInode} />
@@ -339,7 +375,9 @@ function DragAndDropArea(props) {
 				<DragOverlay wrapperElement="ul" className={`inode-list drag-overlay ${layout}`} style={overlayStyle} modifiers={[modifyMovement, restrictToParentElement]}>
 				{inodes.filter(f => f.dragged).map(inode => (
 					<Inode key={inode.id} {...inode}>
-						<ListItem {...inode} layout={layout} />
+						<div className="inode">
+							<ListItem {...inode} layout={layout} />
+						</div>
 					</Inode>
 				))}
 				</DragOverlay>

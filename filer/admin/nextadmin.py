@@ -14,6 +14,7 @@ from django.http.response import (
 from django.middleware.csrf import get_token
 from django.template.response import TemplateResponse
 from django.urls import path, reverse
+from django.utils.translation import gettext_lazy as _
 
 from filer.models.nextmodels import InodeModel, NextFolder, NextFile, PinnedFolder
 
@@ -112,6 +113,13 @@ class InodeAdmin(admin.ModelAdmin):
 class FolderAdmin(InodeAdmin):
     folder_template = 'admin/filer/next/folder.html'
     _model_admin_cache = {}
+    _legends = {
+        'name': _("Name"),
+        'owner_name': _("Owner"),
+        'details': _("Details"),
+        'created_at': _("Created at"),
+        'mime_type': _("Mime type"),
+    }
 
     @property
     def media(self):
@@ -162,11 +170,6 @@ class FolderAdmin(InodeAdmin):
                 self.admin_site.admin_view(self.add_folder),
                 name='filer_add_folder',
             ),
-            path(
-                '<uuid:folder_id>/change_inode',
-                self.admin_site.admin_view(self.change_inode),
-                name='filer_change_inode',
-            ),
         ]
         urls.extend(super().get_urls())
         return urls
@@ -208,9 +211,9 @@ class FolderAdmin(InodeAdmin):
             erase_trash_folder_url=reverse('admin:filer_erase_trash_folder'),
             toggle_pin_url=reverse('admin:filer_toggle_pin', args=(obj.id,)),
             add_folder_url=reverse('admin:filer_add_folder', args=(obj.id,)),
-            change_inode_url=reverse('admin:filer_change_inode', args=(obj.id,)),
             parent_url=reverse('admin:filer_nextfolder_change', args=(obj.parent_id,)) if obj.parent_id else None,
             favorite_folders=favorite_folders,
+            legends=legends,
             is_root=is_root,
             is_trash=is_trash,
             csrf_token=get_token(request),
