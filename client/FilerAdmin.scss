@@ -253,6 +253,9 @@ $trash-background: repeating-linear-gradient(45deg, transparent, transparent 10p
 
 						img {
 							width: 100%;
+							&[src$=".svg"] {
+								scale: 75%;
+							}
 						}
 
 						figcaption {
@@ -277,10 +280,16 @@ $trash-background: repeating-linear-gradient(45deg, transparent, transparent 10p
 
 				&.header {
 					height: auto;
+					font-weight: bold;
+					border-bottom: 1px solid lightgrey;
 				}
 
-				&:nth-child(odd) {
+				&:nth-child(even) {
 					background-color: white;
+				}
+
+				&:last-child {
+					border-bottom: 1px solid lightgrey;
 				}
 
 				.inode {
@@ -291,13 +300,15 @@ $trash-background: repeating-linear-gradient(45deg, transparent, transparent 10p
 
 					div {
 						padding: 5px 10px;
-					}
 
-					img {
-						margin-left: auto;
-						margin-right: auto;
-						width: 60px;
-						height: 60px;
+						&:has(> img) {
+							padding-left: 20px;
+
+							img {
+								width: 60px;
+								height: 60px;
+							}
+						}
 					}
 
 					textarea {
@@ -326,15 +337,12 @@ $trash-background: repeating-linear-gradient(45deg, transparent, transparent 10p
 			user-select: none;
 			border: 1px solid transparent;
 			cursor: pointer;
+			font-size: 15px;
+			line-height: 18px;
 
 			&.disabled {
 				opacity: 0.5;
 				cursor: not-allowed;
-			}
-
-			&.selected:nth-child(n) {
-				border: 1px dashed darken(lightgoldenrodyellow, 50%);
-				background-color: lightgoldenrodyellow;
 			}
 
 			.inode {
@@ -343,7 +351,7 @@ $trash-background: repeating-linear-gradient(45deg, transparent, transparent 10p
 
 				&.drag-over {
 					background-color: #cbe5e5;
-					border: 1px solid darken(#cbe5e5, 50%);
+					outline: 1px solid darken(#cbe5e5, 50%);
 				}
 
 				textarea {
@@ -354,14 +362,19 @@ $trash-background: repeating-linear-gradient(45deg, transparent, transparent 10p
 					overflow: hidden;
 					resize: none;
 					box-sizing: border-box;
-					font-size: 15px;
-					line-height: 18px;
+					font-size: inherit;
+					list-style: inherit;
 				}
+			}
+
+			&.selected:nth-child(n) .inode {
+				outline: 1px dashed darken(lightgoldenrodyellow, 50%);
+				background-color: lightgoldenrodyellow;
 			}
 		}
 
 		&:not(.drag-overlay) {
-			padding: 10px 20px;
+			padding: 10px 0;
 			position: absolute;
 			top: 0;
 			right: 0;
@@ -371,14 +384,14 @@ $trash-background: repeating-linear-gradient(45deg, transparent, transparent 10p
 			> li {
 				position: relative;
 
-				&.dragging, &.cutted {
-					border: 1px dashed grey;
+				&.dragging .inode, &.cutted .inode {
+					outline: 1px dashed grey;
 					filter: grayscale(100%);
 					opacity: 0.35;
 				}
 
-				&.copied {
-					border: 1px dashed #30aa00;
+				&.copied .inode {
+					outline: 1px dashed #30aa00;
 
 					&::after {
 						content: " ";
@@ -409,7 +422,6 @@ $trash-background: repeating-linear-gradient(45deg, transparent, transparent 10p
 			background-color: lightgoldenrodyellow;
 
 			> li {
-				border-color: transparent;
 				cursor: grabbing;
 			}
 		}
