@@ -15,15 +15,15 @@ export const useClipboard = () => {
 };
 
 
-export const useLayout = (initial: string) => {
-	const storageKey = 'filer-used-layout';
+export const useLayout = (initial: string) : [string, (value: string) => any] => {
+	const key = 'django-filer-layout';
 	const [value, setValue] = useState(
-		JSON.parse(localStorage.getItem(storageKey)) ?? initial
+		document.cookie.split('; ').find(row => row.startsWith(`${key}=`))?.split('=')[1] ?? initial
 	);
 
 	useEffect(() => {
-		localStorage.setItem(storageKey, JSON.stringify(value));
-	}, [value, storageKey]);
+		document.cookie = `${key}=${value}; path=/; expires=Fri, 31 Dec 9999 23:59:59 GMT; SameSite=Lax;`;
+	}, [value, key]);
 
 	return [value, setValue];
-};
+}
