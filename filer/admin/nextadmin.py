@@ -36,7 +36,7 @@ class InodeAdmin(admin.ModelAdmin):
         if update_fields:
             obj.save(update_fields=update_fields)
         return JsonResponse({
-            'inodes': self.get_children_data(obj.folder),
+            'inodes': self.get_inodes(obj.folder),
             'favorite_folders': self.get_favorite_folders(request, obj.folder),
         })
 
@@ -89,8 +89,11 @@ class InodeAdmin(admin.ModelAdmin):
             folders.append(serialize(trash_folder, is_trash=True))
         return folders
 
-    def get_children_data(self, folder):
-        children_data = []
+    def get_inodes(self, folder):
+        """
+        Return a serialized list of file/folder-s for the given folder.
+        """
+        inodes = []
         extra_data_fields = ['owner_name', 'is_folder', 'thumbnail_url']
         for inode_model in InodeModel.all_models:
             queryset = inode_model.objects.select_related('owner') \
@@ -99,14 +102,21 @@ class InodeAdmin(admin.ModelAdmin):
                 .annotate(is_folder=Value(inode_model.is_folder, output_field=BooleanField())) \
                 .annotate(thumbnail_url=Value(NextFolder.thumbnail_url) if inode_model.is_folder else F('thumbnail'))
             data_fields = inode_model.data_fields + extra_data_fields
-            children_data.extend(values | computed for values, computed in zip(
+            inodes.extend(values | computed for values, computed in zip(
                 queryset.values(*data_fields),
                 ({
                     'summary': inode_model.summarize(obj),
                     'url': reverse('admin:filer_nextfolder_change', args=(obj.id,)),
                 } for obj in queryset))
             )
-        return children_data
+        return inodes
+
+    def get_ancestor_inodes(self, folder):
+        ancestor_inodes = []
+        while folder:
+            ancestor_inodes.insert(0, self.get_inodes(folder))
+            folder = folder.parent
+        return ancestor_inodes
 
 
 @admin.register(NextFolder)
@@ -202,7 +212,7 @@ class FolderAdmin(InodeAdmin):
         context.update(folder_data=dict(
             id=obj.id,
             name=obj.name,
-            inodes=self.get_children_data(obj),
+            inodes=self.get_inodes(obj),
             fetch_inodes_url=reverse('admin:filer_fetch_inodes', args=(obj.id,)),
             upload_files_url=reverse('admin:filer_upload_files', args=(obj.id,)),
             copy_inodes_url=reverse('admin:filer_copy_inodes', args=(obj.id,)),
@@ -218,12 +228,11 @@ class FolderAdmin(InodeAdmin):
             is_trash=is_trash,
             csrf_token=get_token(request),
         ))
-        if not is_root and not is_trash:
-            if next(filter(lambda f: f['id'] == obj.id and f.get('is_pinned'), favorite_folders), None):
-                # request.session['filer_last_folder_id'] = None
-                pass
-            else:
+        if not is_trash:
+            if not is_root and not next(filter(lambda f: f['id'] == obj.id and f.get('is_pinned'), favorite_folders), None):
                 request.session['filer_last_folder_id'] = str(obj.id)
+            if request.COOKIES.get('django-filer-layout') == 'columns':
+                context['ancestor_inodes'] = self.get_ancestor_inodes(obj.parent)
 
         return TemplateResponse(
             request,
@@ -261,7 +270,7 @@ class FolderAdmin(InodeAdmin):
     def fetch_inodes(self, request, folder_id):
         if not (folder := self.get_object(request, folder_id)):
             return HttpResponseNotFound(f"Folder {folder_id} not found.")
-        return JsonResponse({'inodes': self.get_children_data(folder)})
+        return JsonResponse({'inodes': self.get_inodes(folder)})
 
     def upload_files(self, request, folder_id):
         if request.method != 'POST':
@@ -293,7 +302,7 @@ class FolderAdmin(InodeAdmin):
         for inode in NextFolder.objects.filter_inodes({'id__in': body['inodes']}):
             inode.copy_to(source_folder, owner=request.user)
         return JsonResponse({
-            'inodes': self.get_children_data(source_folder),
+            'inodes': self.get_inodes(source_folder),
             'favorite_folders': self.get_favorite_folders(request, source_folder),
         })
 
@@ -306,7 +315,7 @@ class FolderAdmin(InodeAdmin):
         if 'target_folder' in body:
             if not (target_folder := self.get_object(request, body['target_folder'])):
                 return HttpResponseNotFound(f"Folder {body['target_folder']} not found.")
-            for inode in source_folder.get_children({'id__in': inodes}):
+            for inode in source_folder.get_inodes({'id__in': inodes}):
                 inode.parent = target_folder
                 inode.save(update_fields=['parent'])
         else:
@@ -314,7 +323,7 @@ class FolderAdmin(InodeAdmin):
                 inode.parent = source_folder
                 inode.save(update_fields=['parent'])
         return JsonResponse({
-            'inodes': self.get_children_data(source_folder),
+            'inodes': self.get_inodes(source_folder),
             'favorite_folders': self.get_favorite_folders(request, source_folder),
         })
 
@@ -331,7 +340,7 @@ class FolderAdmin(InodeAdmin):
             inode.parent = trash_folder
             inode.save(update_fields=['parent'])
         return JsonResponse({
-            'inodes': self.get_children_data(current_folder),
+            'inodes': self.get_inodes(current_folder),
             'favorite_folders': self.get_favorite_folders(request, current_folder),
         })
 
@@ -339,7 +348,7 @@ class FolderAdmin(InodeAdmin):
         if request.method != 'DELETE':
             return HttpResponseBadRequest(f"Method {request.method} not allowed. Only DELETE requests are allowed.")
         trash_folder = NextFolder.objects.get_trash_folder(owner=request.user)
-        for child in trash_folder.get_children():
+        for child in trash_folder.get_inodes():
             child.delete()
         fallback_folder = self.get_fallback_folder(request)
         success_url = reverse('admin:filer_nextfolder_change', args=(fallback_folder.id,))
