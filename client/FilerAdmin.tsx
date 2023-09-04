@@ -114,7 +114,11 @@ function ListItem(props) {
 				<figure>
 					<img src={props.thumbnail_url} />
 					<figcaption>
-						<textarea name={`inode-${props.id}`} value={props.name} onChange={changeName} onFocus={handleFocus} onBlur={changeName}></textarea>
+						{!props.folderData || props.folderData.is_trash ? (
+						<span>{props.name}</span>
+						) : (
+						<textarea name={`inode-${props.id}`} value={props.name} onFocus={handleFocus} onChange={changeName} onBlur={changeName}></textarea>
+						)}
 					</figcaption>
 				</figure>
 			);
@@ -124,7 +128,11 @@ function ListItem(props) {
 					<img src={props.thumbnail_url} />
 				</div>
 				<div>
+				{!props.folderData || props.folderData.is_trash ? (
+					props.name
+				) : (
 					<textarea name={`inode-${props.id}`} value={props.name} onChange={changeName} onFocus={handleFocus} onBlur={changeName}></textarea>
+				)}
 				</div>
 				<div>
 					{props.owner_name}
@@ -275,6 +283,9 @@ function DragAndDropArea(props) {
 	}
 
 	async function changeInode(newInode, persit?: boolean) {
+		const currentInode = inodes.filter(inode => inode.id === newInode.id)[0];
+		if (currentInode.name === newInode.name)
+			return;
 		if (persit) {
 			const response = await fetch(newInode.url, {
 				method: 'POST',
@@ -332,6 +343,10 @@ function DragAndDropArea(props) {
 		return classes.join(' ');
 	}
 
+	const kwargs = {
+		selectInode, layout, changeInode, folderData
+	};
+
 	return (
 		<DndContext
 			onDragStart={handleDragStart}
@@ -355,8 +370,8 @@ function DragAndDropArea(props) {
 			) : null}
 			{inodes.map(inode =>
 				(inode.is_folder
-				? <Folder key={inode.id} {...inode} selectInode={selectInode} layout={layout} changeInode={changeInode} />
-				: <File key={inode.id} {...inode} selectInode={selectInode} layout={layout} changeInode={changeInode} />
+				? <Folder key={inode.id} {...inode} {...kwargs} />
+				: <File key={inode.id} {...inode} {...kwargs} />
 				)
 			)}
 			</ul>
@@ -393,6 +408,7 @@ export default function FilerAdmin(props) {
 	const [inodes, setInodes] = useState(folderData.inodes);
 	const [lastSelectedInode, setSelectedInode] = useState(-1);
 	const [favoriteFolders, setFavoriteFolders] = useState(folderData.favorite_folders);
+	const [panels, setPanels] = useState([]);
 	const [layout, setLayout] = useLayout('tiles');
 	const [clipboard, setClipboard] = useClipboard();
 
@@ -576,13 +592,21 @@ export default function FilerAdmin(props) {
 		}
 	}
 
+	function switchLayout(newLayout: string) {
+		setLayout(newLayout);
+		if (newLayout !== layout && newLayout === 'columns') {
+			window.location.reload();
+		}
+	}
+
+	const kwargs = {inodes, setInodes, selectInode, folderData, layout};
 	return (<>
 		<MenuBar
 			clipboard={clipboard}
 			parentUrl={folderData.parent_url}
 			addFolder={addFolder}
 			openUploader={() => uploaderRef.current.openUploader()}
-			setLayout={setLayout}
+			setLayout={switchLayout}
 			copyInodes={copyInodes}
 			cutInodes={cutInodes}
 			pasteInodes={pasteInodes}
@@ -596,25 +620,13 @@ export default function FilerAdmin(props) {
 		<div className="work-area">
 		{folderData.is_trash ? (
 			<SelectableArea selectableElements={getSelectableElements} deselectAll={deselectAll} isTrash={true}>
-				<DragAndDropArea
-					inodes={inodes}
-					setInodes={setInodes}
-					selectInode={selectInode}
-					folderData={folderData}
-					layout={layout}
-				/>
+				<DragAndDropArea {...kwargs} />
 			</SelectableArea>
 		) : (
+
 			<FileUploader ref={uploaderRef} folderData={folderData} refreshFolder={refreshFolder}>
 				<SelectableArea selectableElements={getSelectableElements} deselectAll={deselectAll}>
-					<DragAndDropArea
-						inodes={inodes}
-						setInodes={setInodes}
-						setFavoriteFolders={setFavoriteFolders}
-						selectInode={selectInode}
-						folderData={folderData}
-						layout={layout}
-					/>
+					<DragAndDropArea {...kwargs} setFavoriteFolders={setFavoriteFolders} />
 				</SelectableArea>
 			</FileUploader>
 		)}

@@ -130,11 +130,11 @@ class InodeModel(models.Model, metaclass=InodeMetaModel):
 class FolderModelManager(InodeManager):
     @cached_property
     def root_folder(self):
-        root_folder, _ = self.get_or_create(parent=None, name="root")
+        root_folder, _ = self.get_or_create(parent=None, name='root')
         return root_folder
 
     def get_trash_folder(self, owner):
-        trash_folder, _ = self.get_or_create(parent=None, owner=owner, name="trash")
+        trash_folder, _ = self.get_or_create(parent=None, owner=owner, name='__trash__')
         return trash_folder
 
 
@@ -164,6 +164,14 @@ class NextFolder(InodeModel):
     def num_children(self):
         num_children = sum(inode_model.objects.filter(parent=self).count() for inode_model in InodeModel.all_models)
         return num_children
+
+    @property
+    def is_root(self):
+        return self.__class__.objects.root_folder.id == self.id
+
+    @property
+    def is_trash(self):
+        return self.parent is None and self.name == '__trash__'
 
     def summarize(self):
         return "({}, {})".format(self.num_children, _("items"))
