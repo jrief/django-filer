@@ -82,7 +82,7 @@ export function SelectableArea(props) {
 		activeRect.left += areaRect.x;
 		activeRect.top += areaRect.y;
 		console.log(activeRect);
-		const elements = props.selectableElements(areaRef.current);
+		const elements = areaRef.current.querySelectorAll('.inode-list > li');
 		for (let element of elements) {
 			const elemRect = element.getBoundingClientRect();
 			if (
