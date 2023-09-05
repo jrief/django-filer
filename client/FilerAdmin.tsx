@@ -3,7 +3,6 @@ import {useClipboard, useLayout} from './Storage';
 import {FileUploader} from './FileUploader';
 import {FolderTabs} from './FolderTabs';
 import {MenuBar} from './MenuBar';
-import {DragAndDropArea} from './DragAndDropArea';
 import {SelectableArea} from './SelectableArea';
 
 
@@ -199,7 +198,7 @@ export default function FilerAdmin(props) {
 		}
 	}
 
-	const kwargs = {inodes, setInodes, selectInode, folderData, layout};
+	const kwargs = {inodes, setInodes, selectInode, folderData, layout, setFavoriteFolders, deselectAll};
 	return (<>
 		<MenuBar
 			clipboard={clipboard}
@@ -219,15 +218,11 @@ export default function FilerAdmin(props) {
 		<FolderTabs activeFolderId={folderData.id} folders={favoriteFolders} togglePin={togglePin} />
 		<div className="work-area">
 		{folderData.is_trash ? (
-			<SelectableArea deselectAll={deselectAll} isTrash={true}>
-				<DragAndDropArea {...kwargs} />
-			</SelectableArea>
+			<SelectableArea {...kwargs} />
 		) : (
 
 			<FileUploader ref={uploaderRef} folderData={folderData} refreshFolder={refreshFolder}>
-				<SelectableArea deselectAll={deselectAll}>
-					<DragAndDropArea {...kwargs} setFavoriteFolders={setFavoriteFolders} />
-				</SelectableArea>
+				<SelectableArea {...kwargs} />
 			</FileUploader>
 		)}
 		</div>

@@ -1,4 +1,5 @@
 import React, {useState, useRef} from 'react';
+import {DragAndDropArea} from './DragAndDropArea';
 
 
 function SelectRectangle(props) {
@@ -109,7 +110,7 @@ export function SelectableArea(props) {
 
 	function cssClasses() {
 		const classes = ['selectable-area'];
-		if (props.isTrash) {
+		if (props.folderData.is_trash) {
 			classes.push('trash');
 		}
 		return classes.join(' ');
@@ -117,7 +118,7 @@ export function SelectableArea(props) {
 
 	return (
 		<div ref={areaRef} className={cssClasses()} onMouseDown={selectionStart} onMouseMove={selectionExtend} onMouseUp={selectionEnd} onMouseLeave={selectionDiscard}>
-			{props.children}
+			<DragAndDropArea {...props} />
 			<SelectRectangle style={activeRect} />
 		</div>
 	)
