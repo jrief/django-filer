@@ -201,7 +201,7 @@ class FolderAdmin(InodeAdmin):
         trash_folder = NextFolder.objects.get_trash_folder(owner=request.user)
         favorite_folders = self.get_favorite_folders(request, obj)
         if trash_folder.id != obj.id:
-            context.update(folder_data=dict(
+            context.update(folder_settings=dict(
                 id=obj.id,
                 name=obj.name,
                 is_root=obj.is_root,
@@ -225,7 +225,7 @@ class FolderAdmin(InodeAdmin):
             if not obj.is_root and not next(filter(lambda f: f['id'] == obj.id and f.get('is_pinned'), favorite_folders), None):
                 request.session['filer_last_folder_id'] = str(obj.id)
         else:
-            context.update(folder_data=dict(
+            context.update(folder_settings=dict(
                 id=obj.id,
                 name=obj.name,
                 is_root=False,

@@ -5,8 +5,8 @@ import FilerAdmin from './FilerAdmin';
 
 window.addEventListener('DOMContentLoaded', () => {
 	const content = createRoot(document.getElementById('content'));
-	const folderData = JSON.parse(document.getElementById('folder-data').textContent);
-	content.render(<FilerAdmin folderData={folderData} />);
+	const settings = JSON.parse(document.getElementById('folder-settings').textContent);
+	content.render(<FilerAdmin settings={settings} />);
 
 	// prevent browser from loading a drag-and-dropped file
 	window.addEventListener('dragover',function(event){

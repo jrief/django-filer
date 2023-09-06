@@ -19,7 +19,7 @@ function SelectRectangle(props) {
 
 
 export function SelectableArea(props) {
-	const {folderData, inodes, setInodes} = props;
+	const {settings, inodes, setInodes} = props;
 	const areaRef = useRef(null);
 	const [lastSelectedInode, setSelectedInode] = useState(-1);
 	const [activeRect, setActiveRect] = useState(null);
@@ -31,7 +31,7 @@ export function SelectableArea(props) {
 		let modifier;
 		if (event.detail === 2) {
 			// double click
-			if (!folderData.is_trash) {
+			if (!settings.is_trash) {
 				// prevent editing files in trash folder
 				window.location.assign(this.url);
 			}
@@ -156,14 +156,14 @@ export function SelectableArea(props) {
 
 	function cssClasses() {
 		const classes = ['selectable-area'];
-		if (folderData.is_trash) {
+		if (settings.is_trash) {
 			classes.push('trash');
 		}
 		return classes.join(' ');
 	}
 
 	const kwargs = {
-		inodes, selectInode, folderData, setInodes,
+		inodes, selectInode, settings, setInodes,
 		layout: props.layout,
 		setFavoriteFolders: props.setFavoriteFolders
 	};

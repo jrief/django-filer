@@ -40,7 +40,7 @@ function AlternativeDroppable(props) {
 
 
 export function DragAndDropArea(props) {
-	const {inodes, setInodes, setFavoriteFolders, selectInode, folderData, layout} = props;
+	const {inodes, setInodes, setFavoriteFolders, selectInode, layout, settings} = props;
 	const listRef = useRef(null);
 	const downloadLinkRef = useRef(null);
 	const overlayRef = useRef(null);
@@ -75,12 +75,12 @@ export function DragAndDropArea(props) {
 			const draggedInodes = inodes.filter(inode => inode.dragged);
 			if (over.id === 'download-droppable')
 				return downloadFiles(draggedInodes);
-			const fetchUrl = over.id === 'recycle-droppable' ? folderData.delete_inodes_url : folderData.move_inodes_url;
+			const fetchUrl = over.id === 'recycle-droppable' ? settings.delete_inodes_url : settings.move_inodes_url;
 			const response = await fetch(fetchUrl, {
 				method: 'POST',
 				headers: {
 					'Content-Type': 'application/json',
-					'X-CSRFToken': folderData.csrf_token,
+					'X-CSRFToken': settings.csrf_token,
 				},
 				body: JSON.stringify({
 					inodes: draggedInodes.map(inode => inode.id),
@@ -103,11 +103,11 @@ export function DragAndDropArea(props) {
 
 	async function changeInode(newInode, persist?: boolean) {
 		if (persist && newInode.dirty) {
-			const response = await fetch(folderData.update_inode_url, {
+			const response = await fetch(settings.update_inode_url, {
 				method: 'POST',
 				headers: {
 					'Content-Type': 'application/json',
-					'X-CSRFToken': folderData.csrf_token,
+					'X-CSRFToken': settings.csrf_token,
 				},
 				body: JSON.stringify(newInode),
 			});
@@ -155,7 +155,7 @@ export function DragAndDropArea(props) {
 
 	//const modifiers = [modifyMovement, restrictToParentElement];
 	const modifiers = [modifyMovement];
-	const kwargs = {selectInode, layout, changeInode, folderData};
+	const kwargs = {selectInode, layout, changeInode, settings};
 	return (
 		<DndContext
 			onDragStart={handleDragStart}
@@ -185,7 +185,7 @@ export function DragAndDropArea(props) {
 			)}
 			</ul>
 
-			{folderData.is_trash ? null : (<>
+			{settings.is_trash ? null : (<>
 			<AlternativeDroppable id="download-droppable" className="download-droppable">
 				<DownloadIcon />
 			</AlternativeDroppable>

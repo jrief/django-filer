@@ -104,7 +104,7 @@ export function ListItem(props) {
 				<figure>
 					<img src={props.thumbnail_url} />
 					<figcaption>
-						{!props.folderData || props.folderData.is_trash ? (
+						{!props.settings || props.settings.is_trash ? (
 						<span>{props.name}</span>
 						) : (
 						<textarea name={`inode-${props.id}`} value={props.name} onClick={swallowEvent} onFocus={handleFocus} onChange={changeName} onBlur={changeName}></textarea>
@@ -118,7 +118,7 @@ export function ListItem(props) {
 					<img src={props.thumbnail_url} />
 				</div>
 				<div>
-				{!props.folderData || props.folderData.is_trash ? (
+				{!props.settings || props.settings.is_trash ? (
 					props.name
 				) : (
 					<textarea name={`inode-${props.id}`} value={props.name} onClick={swallowEvent} onChange={changeName} onFocus={handleFocus} onBlur={changeName}></textarea>
@@ -139,7 +139,7 @@ export function ListItem(props) {
 					<img src={props.thumbnail_url} />
 				</div>
 				<div>
-				{!props.folderData || props.folderData.is_trash ? (
+				{!props.settings || props.settings.is_trash ? (
 					props.name
 				) : (
 					<textarea name={`inode-${props.id}`} value={props.name} onClick={swallowEvent} onChange={changeName} onFocus={handleFocus} onBlur={changeName}></textarea>

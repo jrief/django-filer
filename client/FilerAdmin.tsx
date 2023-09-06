@@ -7,10 +7,10 @@ import {SelectableArea} from './SelectableArea';
 
 
 export default function FilerAdmin(props) {
-	const {folderData} = props;
+	const {settings} = props;
 	const uploaderRef = useRef(null);
-	const [ancestors, setAncestors] = useState(folderData.ancestors);
-	const [favoriteFolders, setFavoriteFolders] = useState(folderData.favorite_folders);
+	const [ancestors, setAncestors] = useState(settings.ancestors);
+	const [favoriteFolders, setFavoriteFolders] = useState(settings.favorite_folders);
 	const [currentDepth, setCurrentDepth] = useState(0);
 	const [layout, setLayout] = useLayout('tiles');
 	const [clipboard, setClipboard] = useClipboard();
@@ -24,7 +24,7 @@ export default function FilerAdmin(props) {
 	}
 
 	async function refreshFolder() {
-		const response = await fetch(folderData.fetch_inodes_url);
+		const response = await fetch(settings.fetch_inodes_url);
 		if (response.status === 200) {
 			const data = await response.json();
 			setInodes(data.inodes);
@@ -44,11 +44,11 @@ export default function FilerAdmin(props) {
 		const inodes = ancestors[currentDepth];
 		if (!folderName)
 			return;
-		const response = await fetch(folderData.add_folder_url, {
+		const response = await fetch(settings.add_folder_url, {
 			method: 'POST',
 			headers: {
 				'Content-Type': 'application/json',
-				'X-CSRFToken': folderData.csrf_token,
+				'X-CSRFToken': settings.csrf_token,
 			},
 			body: JSON.stringify({
 				name: folderName,
@@ -78,11 +78,11 @@ export default function FilerAdmin(props) {
 		let fetchUrl;
 		let pastedInodes = clipboard.filter(inode => inode.copied).map(inode => inode.id);
 		if (pastedInodes.length) {
-			fetchUrl = folderData.copy_inodes_url;
+			fetchUrl = settings.copy_inodes_url;
 		} else {
 			pastedInodes = clipboard.filter(inode => inode.cutted).map(inode => inode.id);
 			if (pastedInodes.length) {
-				fetchUrl = folderData.move_inodes_url;
+				fetchUrl = settings.move_inodes_url;
 			}
 		}
 		if (!fetchUrl)
@@ -92,7 +92,7 @@ export default function FilerAdmin(props) {
 			method: 'POST',
 			headers: {
 				'Content-Type': 'application/json',
-				'X-CSRFToken': folderData.csrf_token,
+				'X-CSRFToken': settings.csrf_token,
 			},
 			body: JSON.stringify({
 				inodes: pastedInodes
@@ -110,11 +110,11 @@ export default function FilerAdmin(props) {
 		setClipboard([]);
 		const inodes = ancestors[currentDepth];
 		const selectedInodes = inodes.filter(inode => inode.selected).map(inode => inode.id);
-		const response = await fetch(folderData.delete_inodes_url, {
+		const response = await fetch(settings.delete_inodes_url, {
 			method: 'POST',
 			headers: {
 				'Content-Type': 'application/json',
-				'X-CSRFToken': folderData.csrf_token,
+				'X-CSRFToken': settings.csrf_token,
 			},
 			body: JSON.stringify({
 				inodes: selectedInodes
@@ -129,10 +129,10 @@ export default function FilerAdmin(props) {
 
 	async function eraseTrashFolder() {
 		setClipboard([]);
-		const response = await fetch(folderData.erase_trash_folder_url, {
+		const response = await fetch(settings.erase_trash_folder_url, {
 			method: 'DELETE',
 			headers: {
-				'X-CSRFToken': folderData.csrf_token,
+				'X-CSRFToken': settings.csrf_token,
 			},
 		});
 		if (response.status === 200) {
@@ -142,11 +142,11 @@ export default function FilerAdmin(props) {
 	}
 
 	async function togglePin(pinnedId) {
-		const response = await fetch(folderData.toggle_pin_url, {
+		const response = await fetch(settings.toggle_pin_url, {
 			method: 'POST',
 			headers: {
 				'Content-Type': 'application/json',
-				'X-CSRFToken': folderData.csrf_token,
+				'X-CSRFToken': settings.csrf_token,
 			},
 			body: JSON.stringify({
 				pinned_id: pinnedId
@@ -170,11 +170,11 @@ export default function FilerAdmin(props) {
 		}
 	}
 
-	const kwargs = {folderData, setFavoriteFolders, deselectAll, setInodes, setCurrentDepth};
+	const kwargs = {settings, setFavoriteFolders, deselectAll, setInodes, setCurrentDepth};
 	return (<>
 		<MenuBar
 			clipboard={clipboard}
-			parentUrl={folderData.parent_url}
+			parentUrl={settings.parent_url}
 			addFolder={addFolder}
 			openUploader={() => uploaderRef.current.openUploader()}
 			setLayout={switchLayout}
@@ -183,23 +183,23 @@ export default function FilerAdmin(props) {
 			pasteInodes={pasteInodes}
 			deleteInodes={deleteInodes}
 			eraseTrashFolder={eraseTrashFolder}
-			isRoot={folderData.is_root}
-			isTrash={folderData.is_trash}
+			isRoot={settings.is_root}
+			isTrash={settings.is_trash}
 			numSelected={ancestors[currentDepth].filter(inode => inode.selected).length}
 		/>
-		<FolderTabs activeFolderId={folderData.id} folders={favoriteFolders} togglePin={togglePin} />
-		{folderData.is_trash ? (
+		<FolderTabs activeFolderId={settings.id} folders={favoriteFolders} togglePin={togglePin} />
+		{settings.is_trash ? (
 		<div className="work-area tiles">
 			<SelectableArea {...kwargs} inodes={ancestors[0]} layout="tiles" />
 		</div>
 		) : (
 		<div className={`work-area ${layout}`}>
 			{layout === 'columns' ? ancestors.map((inodes, depth) => (
-			<FileUploader ref={uploaderRef} key={depth} folderData={folderData} refreshFolder={refreshFolder}>
+			<FileUploader ref={uploaderRef} key={depth} settings={settings} refreshFolder={refreshFolder}>
 				<SelectableArea {...kwargs} inodes={inodes} layout={layout} />
 			</FileUploader>
 			)) : (
-			<FileUploader ref={uploaderRef} folderData={folderData} refreshFolder={refreshFolder}>
+			<FileUploader ref={uploaderRef} settings={settings} refreshFolder={refreshFolder}>
 				<SelectableArea {...kwargs} inodes={ancestors[0]} layout={layout} />
 			</FileUploader>
 			)}

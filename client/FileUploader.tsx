@@ -77,7 +77,7 @@ function ProgressBar(props) {
 
 
 export const FileUploader = forwardRef((props: any, ref) => {
-	const {folderData} = props;
+	const {settings} = props;
 	const inputRef = useRef(null);
 	const [dragging, setDragging] = useState(false);
 	const [uploading, setUploading] = useState([]);
@@ -150,7 +150,7 @@ export const FileUploader = forwardRef((props: any, ref) => {
 			{dragging || uploading.length > 0 ? (
 				<DragOverlay dragging={dragging}>
 					{uploading.map((file, index) => (
-						<ProgressBar key={index} file={file} uploadUrl={folderData.upload_files_url} CSRFToken={folderData.csrf_token}/>
+						<ProgressBar key={index} file={file} uploadUrl={settings.upload_files_url} CSRFToken={settings.csrf_token}/>
 					))}
 				</DragOverlay>
 			) : null}
