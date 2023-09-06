@@ -9,52 +9,18 @@ import {SelectableArea} from './SelectableArea';
 export default function FilerAdmin(props) {
 	const {folderData} = props;
 	const uploaderRef = useRef(null);
-	const [inodes, setInodes] = useState(folderData.inodes);
-	const [lastSelectedInode, setSelectedInode] = useState(-1);
+	const [ancestors, setAncestors] = useState(folderData.ancestors);
 	const [favoriteFolders, setFavoriteFolders] = useState(folderData.favorite_folders);
+	const [currentDepth, setCurrentDepth] = useState(0);
 	const [layout, setLayout] = useLayout('tiles');
 	const [clipboard, setClipboard] = useClipboard();
 
-	function selectInode(event: PointerEvent) {
-		if (this.disabled)
-			return;
-		let modifier;
-		if (event.detail === 2) {
-			// double click
-			if (folderData.is_trash)
-				return;  // prevent editing files in trash folder
-			window.location.assign(this.url);
-		} else if ((event.detail as any)?.selected) {
-			// this is a SelectableArea event
-			modifier = f => ({...f, selected: f.selected || f.id === this.id});
-		} else if (event.shiftKey) {
-			// shift click
-			const selectedInodeIndex = inodes.findIndex(f => f.id === this.id);
-			if (selectedInodeIndex < lastSelectedInode) {
-				modifier = (f, k) => ({...f, selected: k >= selectedInodeIndex && k <= lastSelectedInode});
-			} else if (selectedInodeIndex > lastSelectedInode) {
-				modifier = (f, k) => ({...f, selected: k >= lastSelectedInode && k <= selectedInodeIndex});
-			}
-		} else if (event.altKey || event.ctrlKey || event.metaKey) {
-			// alt/ctrl/meta click
-			if (this.selected) {
-				modifier = f => ({...f, selected: f.selected && f.id !== this.id});
-			} else {
-				modifier = f => ({...f, selected: f.selected || f.id === this.id});
-			}
-		} else {
-			// simple click
-			if (this.selected) {
-				modifier = f => ({...f, selected: false});
-			} else {
-				modifier = f => ({...f, selected: f.id === this.id});
-			}
-			if (!this.selected) {
-				// remember the last selected inode for shift-click
-				setSelectedInode(inodes.findIndex(inode => inode.id === this.id));
-			}
-		}
-		setInodes(inodes.map((f, k) => ({...modifier(f, k), cutted: false, copied: false})));
+	function setInodes(inodes) {
+		setAncestors(ancestors.map((ancestor, depth) => {
+			if (depth === currentDepth)
+				return inodes;
+			return ancestor.map(inode => ({...inode, selected: false, cutted: false, copied: false}));
+		}));
 	}
 
 	async function refreshFolder() {
@@ -68,11 +34,14 @@ export default function FilerAdmin(props) {
 	}
 
 	function deselectAll(event) {
-		setInodes(inodes.map(inode => ({...inode, selected: false})));
+		// const inodes = ancestors[currentDepth];
+		// setInodes(inodes.map(inode => ({...inode, selected: false})));
+		setAncestors(ancestors.map(ancestor => ancestor.map(inode => ({...inode, selected: false}))));
 	}
 
 	async function addFolder() {
 		const folderName = window.prompt("Enter folder name");
+		const inodes = ancestors[currentDepth];
 		if (!folderName)
 			return;
 		const response = await fetch(folderData.add_folder_url, {
@@ -94,11 +63,13 @@ export default function FilerAdmin(props) {
 	}
 
 	function copyInodes() {
+		const inodes = ancestors[currentDepth];
 		setClipboard(inodes.filter(inode => inode.selected).map(inode => ({...inode, selected: false, copied: true})));
 		setInodes(inodes.map(inode => ({...inode, copied: inode.selected, selected: false})));
 	}
 
 	function cutInodes() {
+		const inodes = ancestors[currentDepth];
 		setClipboard(inodes.filter(inode => inode.selected).map(inode => ({...inode, selected: false, cutted: true})));
 		setInodes(inodes.map(inode => ({...inode, cutted: inode.selected, selected: false})));
 	}
@@ -137,6 +108,7 @@ export default function FilerAdmin(props) {
 
 	async function deleteInodes() {
 		setClipboard([]);
+		const inodes = ancestors[currentDepth];
 		const selectedInodes = inodes.filter(inode => inode.selected).map(inode => inode.id);
 		const response = await fetch(folderData.delete_inodes_url, {
 			method: 'POST',
@@ -198,7 +170,7 @@ export default function FilerAdmin(props) {
 		}
 	}
 
-	const kwargs = {inodes, setInodes, selectInode, folderData, layout, setFavoriteFolders, deselectAll};
+	const kwargs = {folderData, setFavoriteFolders, deselectAll, setInodes, setCurrentDepth};
 	return (<>
 		<MenuBar
 			clipboard={clipboard}
@@ -213,18 +185,25 @@ export default function FilerAdmin(props) {
 			eraseTrashFolder={eraseTrashFolder}
 			isRoot={folderData.is_root}
 			isTrash={folderData.is_trash}
-			numSelected={inodes.filter(inode => inode.selected).length}
+			numSelected={ancestors[currentDepth].filter(inode => inode.selected).length}
 		/>
 		<FolderTabs activeFolderId={folderData.id} folders={favoriteFolders} togglePin={togglePin} />
-		<div className="work-area">
 		{folderData.is_trash ? (
-			<SelectableArea {...kwargs} />
-		) : (
-
-			<FileUploader ref={uploaderRef} folderData={folderData} refreshFolder={refreshFolder}>
-				<SelectableArea {...kwargs} />
-			</FileUploader>
-		)}
+		<div className="work-area tiles">
+			<SelectableArea {...kwargs} inodes={ancestors[0]} layout="tiles" />
 		</div>
+		) : (
+		<div className={`work-area ${layout}`}>
+			{layout === 'columns' ? ancestors.map((inodes, depth) => (
+			<FileUploader ref={uploaderRef} key={depth} folderData={folderData} refreshFolder={refreshFolder}>
+				<SelectableArea {...kwargs} inodes={inodes} layout={layout} />
+			</FileUploader>
+			)) : (
+			<FileUploader ref={uploaderRef} folderData={folderData} refreshFolder={refreshFolder}>
+				<SelectableArea {...kwargs} inodes={ancestors[0]} layout={layout} />
+			</FileUploader>
+			)}
+		</div>
+		)}
 	</>);
 }

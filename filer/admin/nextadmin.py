@@ -20,25 +20,10 @@ from filer.models.nextmodels import InodeModel, NextFolder, NextFile, PinnedFold
 
 
 class InodeAdmin(admin.ModelAdmin):
-    def change_view(self, request, object_id, **kwargs):
+    def Xchange_view(self, request, object_id, **kwargs):
         if request.method == 'POST' and request.content_type == 'application/json':
             return self.change_view_post(request, object_id, **kwargs)
         return super().change_view(request, object_id, **kwargs)
-
-    def change_view_post(self, request, object_id, **kwargs):
-        obj = self.get_object(request, object_id)
-        body = json.loads(request.body)
-        update_fields = []
-        for field in self.get_fields(request, obj):
-            if field in body and body[field] != getattr(obj, field):
-                setattr(obj, field, body[field])
-                update_fields.append(field)
-        if update_fields:
-            obj.save(update_fields=update_fields)
-        return JsonResponse({
-            'inodes': self.get_inodes(obj.folder),
-            'favorite_folders': self.get_favorite_folders(request, obj.folder),
-        })
 
     def get_fallback_folder(self, request):
         try:
@@ -114,7 +99,7 @@ class InodeAdmin(admin.ModelAdmin):
     def get_ancestors(self, request, folder):
         ancestors = []
         while folder:
-            ancestors.insert(0, self.get_inodes(folder))
+            ancestors.append(self.get_inodes(folder))
             if request.COOKIES.get('django-filer-layout') != 'columns':
                 break  # not required for layout in ['tiles', 'list']
             folder = folder.parent
@@ -151,6 +136,11 @@ class FolderAdmin(InodeAdmin):
                 '<uuid:folder_id>/upload',
                 self.admin_site.admin_view(self.upload_files),
                 name='filer_upload_files',
+            ),
+            path(
+                '<uuid:folder_id>/update',
+                self.admin_site.admin_view(self.update_inode),
+                name='filer_update_inode',
             ),
             path(
                 '<uuid:folder_id>/copy',
@@ -217,9 +207,10 @@ class FolderAdmin(InodeAdmin):
                 is_root=obj.is_root,
                 is_trash=False,
                 ancestors=self.get_ancestors(request, obj),
-                inodes=self.get_inodes(obj),  # TODO: deprecated; shall be replaced by ancestors
+                #inodes=self.get_inodes(obj),  # TODO: deprecated; shall be replaced by ancestors
                 fetch_inodes_url=reverse('admin:filer_fetch_inodes', args=(obj.id,)),
                 upload_files_url=reverse('admin:filer_upload_files', args=(obj.id,)),
+                update_inode_url=reverse('admin:filer_update_inode', args=(obj.id,)),
                 copy_inodes_url=reverse('admin:filer_copy_inodes', args=(obj.id,)),
                 move_inodes_url=reverse('admin:filer_move_inodes', args=(obj.id,)),
                 delete_inodes_url=reverse('admin:filer_delete_inodes', args=(obj.id,)),
@@ -240,7 +231,7 @@ class FolderAdmin(InodeAdmin):
                 is_root=False,
                 is_trash=True,
                 ancestors=self.get_ancestors(request, obj),
-                inodes=self.get_inodes(obj),  # TODO: deprecated; shall be replaced by ancestors
+                #inodes=self.get_inodes(obj),  # TODO: deprecated; shall be replaced by ancestors
                 move_inodes_url=reverse('admin:filer_move_inodes', args=(obj.id,)),
                 erase_trash_folder_url=reverse('admin:filer_erase_trash_folder'),
                 toggle_pin_url=reverse('admin:filer_toggle_pin', args=(obj.id,)),
@@ -307,6 +298,27 @@ class FolderAdmin(InodeAdmin):
             return HttpResponseBadRequest(f"Invalid content-type {request.content_type}. Only application/json is allowed.")
         if self.get_object(request, folder_id) is None:
             return HttpResponseNotFound(f"Folder {folder_id} not found.")
+
+    def update_inode(self, request, folder_id):
+        if response := self.check_for_valid_post_request(request, folder_id):
+            return response
+        body = json.loads(request.body)
+        current_folder = self.get_object(request, folder_id)
+        try:
+            obj = self.get_object(request, body['id'])
+        except (InodeModel.DoesNotExist, KeyError):
+            return HttpResponseNotFound(f"Inode(id={body.get('id', '<missing>')}) not found.")
+        update_fields = []
+        for field in self.get_fields(request, obj):
+            if field in body and body[field] != getattr(obj, field):
+                setattr(obj, field, body[field])
+                update_fields.append(field)
+        if update_fields:
+            obj.save(update_fields=update_fields)
+        return JsonResponse({
+            'inodes': self.get_inodes(current_folder),
+            'favorite_folders': self.get_favorite_folders(request, current_folder),
+        })
 
     def copy_inodes(self, request, folder_id):
         if response := self.check_for_valid_post_request(request, folder_id):

@@ -101,12 +101,9 @@ export function DragAndDropArea(props) {
 		setInodes(inodes.map(inode => ({...inode, dragged: false})));
 	}
 
-	async function changeInode(newInode, persit?: boolean) {
-		const currentInode = inodes.filter(inode => inode.id === newInode.id)[0];
-		if (currentInode.name === newInode.name)
-			return;
-		if (persit) {
-			const response = await fetch(newInode.url, {
+	async function changeInode(newInode, persist?: boolean) {
+		if (persist && newInode.dirty) {
+			const response = await fetch(folderData.update_inode_url, {
 				method: 'POST',
 				headers: {
 					'Content-Type': 'application/json',
@@ -122,7 +119,9 @@ export function DragAndDropArea(props) {
 				console.error(response);
 			}
 		}
-		setInodes(inodes.map(inode => inode.id === newInode.id ? newInode : inode));
+		if (inodes.findIndex(inode => inode.id === newInode.id && inode.name !== newInode.name) !== -1) {
+			setInodes(inodes.map(inode => inode.id === newInode.id ? {...newInode, dirty: true} : inode));
+		}
 	}
 
 	function downloadFiles(draggedInodes) {
@@ -154,18 +153,9 @@ export function DragAndDropArea(props) {
 		};
 	}
 
-	function cssClasses() {
-		const classes = ['inode-list', layout];
-		if (draggedIds) {
-			classes.push('dropping');
-		}
-		return classes.join(' ');
-	}
-
-	const kwargs = {
-		selectInode, layout, changeInode, folderData
-	};
-
+	//const modifiers = [modifyMovement, restrictToParentElement];
+	const modifiers = [modifyMovement];
+	const kwargs = {selectInode, layout, changeInode, folderData};
 	return (
 		<DndContext
 			onDragStart={handleDragStart}
@@ -174,7 +164,7 @@ export function DragAndDropArea(props) {
 			sensors={sensors}
 			collisionDetection={pointerWithin}
 		>
-			<ul ref={listRef} className={cssClasses()}>
+			<ul ref={listRef} className={`inode-list ${draggedIds ? 'dropping' : ''}`}>
 			{layout === 'list' ? (
 				<li className="header">
 					<div className="inode">
@@ -206,7 +196,7 @@ export function DragAndDropArea(props) {
 			</>)}
 
 			<div ref={overlayRef}>
-				<DragOverlay wrapperElement="ul" className={`inode-list drag-overlay ${layout}`} style={overlayStyle} modifiers={[modifyMovement, restrictToParentElement]}>
+				<DragOverlay wrapperElement="ul" className="inode-list drag-overlay" style={overlayStyle} modifiers={modifiers}>
 				{inodes.filter(f => f.dragged).map(inode => (
 					<Inode key={inode.id} {...inode}>
 						<div className="inode">

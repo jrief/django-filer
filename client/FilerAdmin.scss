@@ -112,123 +112,219 @@ $trash-background: repeating-linear-gradient(45deg, transparent, transparent 10p
 		position: relative;
 		width: 100%;
 		height: calc(100% - 75px);
-	}
 
-	.droppable-area {
-		position: relative;
-		width: 100%;
-		height: 100%;
+		.droppable-area {
+			position: relative;
+			width: 100%;
+			height: 100%;
 
-		input[type="file"] {
-			width: 0 !important;
-			height: 0 !important;
-			position: absolute;
-			bottom: 0;
-			padding: 0;
-		}
-
-		.download-droppable, .recycle-droppable {
-			position: absolute;
-			bottom: 0;
-			width: 80px;
-			height: 80px;
-			overflow: hidden;
-
-			.quadrant {
+			input[type="file"] {
+				width: 0 !important;
+				height: 0 !important;
 				position: absolute;
-				bottom: -75px;
-				width: 150px;
-				height: 125px;
-				background-color: #e5ffff;
-				border: 2px solid #cbe5e5;
-				border-radius: 50%;
-				transform: scale(0);
-				transition: transform 0.5s ease-in-out;
+				bottom: 0;
+				padding: 0;
+			}
 
-				svg {
-					width: 32px;
-					height: 32px;
+			.download-droppable, .recycle-droppable {
+				position: absolute;
+				bottom: 0;
+				width: 80px;
+				height: 80px;
+				overflow: hidden;
+
+				.quadrant {
 					position: absolute;
-					bottom: 75px;
+					bottom: -75px;
+					width: 150px;
+					height: 125px;
+					background-color: #e5ffff;
+					border: 2px solid #cbe5e5;
+					border-radius: 50%;
+					transform: scale(0);
+					transition: transform 0.5s ease-in-out;
+
+					svg {
+						width: 32px;
+						height: 32px;
+						position: absolute;
+						bottom: 75px;
+					}
+				}
+
+				&.drag-over .quadrant {
+					background-color: #cbe5e5;
 				}
 			}
 
-			&.drag-over .quadrant {
-				background-color: #cbe5e5;
+			.download-droppable {
+				left: 0;
+				.quadrant {
+					left: -75px;
+					svg {
+						left: 90px;
+					}
+				}
 			}
-		}
 
-		.download-droppable {
-			left: 0;
-			.quadrant {
-				left: -75px;
-				svg {
-					left: 90px;
+			.recycle-droppable {
+				right: 0;
+				.quadrant {
+					right: -75px;
+					svg {
+						right: 90px;
+					}
+				}
+			}
+
+			.progress-overlay {
+				position: absolute;
+				top: 0;
+				right: 0;
+				bottom: 0;
+				left: 0;
+				background-color: rgba(255, 255, 255, 0.75);
+				display: flex;
+				flex-direction: column;
+				justify-content: center;
+				align-items: center;
+
+				.progress-indicator {
+					width: 500px;
+					background-color: #a6dce8;
+					border: 2px double black;
+					padding: 20px;
+
+					p {
+						font-weight: bold;
+						font-size: 20px;
+					}
 				}
 			}
 		}
 
-		.recycle-droppable {
-			right: 0;
-			.quadrant {
-				right: -75px;
-				svg {
-					right: 90px;
+		.selectable-area {
+			position: relative;
+			width: 100%;
+			height: 100%;
+
+			&.trash {
+				.inode-list, li {
+					background-image: $trash-background;
+					background-color: transparent;
+					background-attachment: fixed;
 				}
+			}
+
+			.select-rectangle {
+				position: absolute;
+				border: 1px dotted grey;
 			}
 		}
 
-		.progress-overlay {
+		ul.inode-list {
+			margin: 0;
+			overflow-y: scroll;
+			background-color: ghostwhite;
+
+			&:not(.drag-overlay) {
 			position: absolute;
 			top: 0;
 			right: 0;
 			bottom: 0;
 			left: 0;
-			background-color: rgba(255, 255, 255, 0.75);
-			display: flex;
-			flex-direction: column;
-			justify-content: center;
-			align-items: center;
 
-			.progress-indicator {
-				width: 500px;
-				background-color: #a6dce8;
-				border: 2px double black;
-				padding: 20px;
+			> li {
+				position: relative;
 
-				p {
-					font-weight: bold;
-					font-size: 20px;
+				&.dragging .inode, &.cutted .inode {
+					outline: 1px dashed grey;
+					filter: grayscale(100%);
+					opacity: 0.35;
+				}
+
+				&.copied .inode {
+					outline: 1px dashed #30aa00;
+
+					&::after {
+						content: " ";
+						position: absolute;
+						bottom: 5px;
+						right: 5px;
+						color: #30aa00;
+						width: 2em;
+						height: 2em;
+						background-image: url('data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="rgb(48, 170, 0)"><path d="M6.9998 6V3C6.9998 2.44772 7.44752 2 7.9998 2H19.9998C20.5521 2 20.9998 2.44772 20.9998 3V17C20.9998 17.5523 20.5521 18 19.9998 18H16.9998V20.9991C16.9998 21.5519 16.5499 22 15.993 22H4.00666C3.45059 22 3 21.5554 3 20.9991L3.0026 7.00087C3.0027 6.44811 3.45264 6 4.00942 6H6.9998ZM5.00242 8L5.00019 20H14.9998V8H5.00242ZM8.9998 6H16.9998V16H18.9998V4H8.9998V6Z"></path></svg>');
+						background-repeat: no-repeat;
+					}
+				}
+			}
+
+			&.dropping ~ :is(.download-droppable, .recycle-droppable) .quadrant {
+				transform: scale(1);
+			}
+			//&.dropping ~ .recycle-droppable .quadrant {
+			//	transform: scale(1);
+			//}
+		}
+
+			&.drag-overlay {
+			padding: 0;
+			opacity: 0.5;
+			border: 1px dashed darken(lightgoldenrodyellow, 50%);
+			background-color: lightgoldenrodyellow;
+
+			> li {
+				cursor: grabbing;
+			}
+		}
+
+			li {
+				display: block;
+				list-style: none;
+				padding: 0;
+				user-select: none;
+				border: 1px solid transparent;
+				cursor: pointer;
+				font-size: 15px;
+				line-height: 18px;
+
+				&.disabled {
+					opacity: 0.5;
+					cursor: not-allowed;
+				}
+
+				.inode {
+					height: 100%;
+					width: 100%;
+
+					&.drag-over {
+						background-color: #cbe5e5;
+						outline: 1px solid darken(#cbe5e5, 50%);
+					}
+
+					textarea {
+						border: none;
+						background-color: transparent;
+						margin: 0;
+						width: 100%;
+						height: 34px;
+						overflow: hidden;
+						resize: none;
+						box-sizing: border-box;
+						font-size: inherit;
+						list-style: inherit;
+					}
+				}
+
+				&.selected:nth-child(n) .inode {
+					outline: 1px dashed darken(lightgoldenrodyellow, 50%);
+					background-color: lightgoldenrodyellow;
 				}
 			}
 		}
-	}
 
-	.selectable-area {
-		position: relative;
-		width: 100%;
-		height: 100%;
-
-		&.trash {
-			.inode-list, li {
-				background-image: $trash-background;
-				background-color: transparent;
-				background-attachment: fixed;
-			}
-		}
-
-		.select-rectangle {
-			position: absolute;
-			border: 1px dotted grey;
-		}
-	}
-
-	ul.inode-list {
-		margin: 0;
-		overflow-y: scroll;
-		background-color: ghostwhite;
-
-		&.tiles {
+		&.tiles ul.inode-list {
 			display: flex;
 			padding: 10px 15px;
 			flex-wrap: wrap;
@@ -269,7 +365,7 @@ $trash-background: repeating-linear-gradient(45deg, transparent, transparent 10p
 			}
 		}
 
-		&.list {
+		&.list ul.inode-list {
 			display: block;
 			padding: 10px 0;
 
@@ -311,10 +407,6 @@ $trash-background: repeating-linear-gradient(45deg, transparent, transparent 10p
 							}
 						}
 					}
-
-					textarea {
-						height: 34px;
-					}
 				}
 			}
 		}
@@ -322,107 +414,44 @@ $trash-background: repeating-linear-gradient(45deg, transparent, transparent 10p
 		&.columns {
 			display: flex;
 			flex-wrap: nowrap;
-			flex-direction: row;
-			align-content: flex-start;
+			flex-direction: row-reverse;
 			justify-content: flex-start;
+			align-items: stretch;
 
-			li {
-				height: 60px;
-			}
-		}
+			ul.inode-list {
+				display: block;
+				padding: 10px 0;
 
-		li {
-			display: block;
-			list-style: none;
-			padding: 0;
-			user-select: none;
-			border: 1px solid transparent;
-			cursor: pointer;
-			font-size: 15px;
-			line-height: 18px;
-
-			&.disabled {
-				opacity: 0.5;
-				cursor: not-allowed;
-			}
-
-			.inode {
-				height: 100%;
-				width: 100%;
-
-				&.drag-over {
-					background-color: #cbe5e5;
-					outline: 1px solid darken(#cbe5e5, 50%);
-				}
-
-				textarea {
-					border: none;
-					background-color: transparent;
-					margin: 0;
+				li {
 					width: 100%;
-					overflow: hidden;
-					resize: none;
+					height: 72px;
 					box-sizing: border-box;
-					font-size: inherit;
-					list-style: inherit;
-				}
-			}
+					margin: 0;
 
-			&.selected:nth-child(n) .inode {
-				outline: 1px dashed darken(lightgoldenrodyellow, 50%);
-				background-color: lightgoldenrodyellow;
-			}
-		}
+					&:nth-child(even) {
+						background-color: white;
+					}
 
-		&:not(.drag-overlay) {
-			position: absolute;
-			top: 0;
-			right: 0;
-			bottom: 0;
-			left: 0;
+					.inode {
+						display: grid;
+						gap: 2px;
+						grid-template-columns: 75px 1fr;
+						align-items: center;
 
-			> li {
-				position: relative;
+						div {
+							padding: 5px 10px;
 
-				&.dragging .inode, &.cutted .inode {
-					outline: 1px dashed grey;
-					filter: grayscale(100%);
-					opacity: 0.35;
-				}
+							&:has(> img) {
+								padding-left: 20px;
 
-				&.copied .inode {
-					outline: 1px dashed #30aa00;
-
-					&::after {
-						content: " ";
-						position: absolute;
-						bottom: 5px;
-						right: 5px;
-						color: #30aa00;
-						width: 2em;
-						height: 2em;
-						background-image: url('data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="rgb(48, 170, 0)"><path d="M6.9998 6V3C6.9998 2.44772 7.44752 2 7.9998 2H19.9998C20.5521 2 20.9998 2.44772 20.9998 3V17C20.9998 17.5523 20.5521 18 19.9998 18H16.9998V20.9991C16.9998 21.5519 16.5499 22 15.993 22H4.00666C3.45059 22 3 21.5554 3 20.9991L3.0026 7.00087C3.0027 6.44811 3.45264 6 4.00942 6H6.9998ZM5.00242 8L5.00019 20H14.9998V8H5.00242ZM8.9998 6H16.9998V16H18.9998V4H8.9998V6Z"></path></svg>');
-						background-repeat: no-repeat;
+								img {
+									width: 60px;
+									height: 60px;
+								}
+							}
+						}
 					}
 				}
-			}
-
-			&.dropping ~ :is(.download-droppable, .recycle-droppable) .quadrant {
-				transform: scale(1);
-			}
-			//&.dropping ~ .recycle-droppable .quadrant {
-			//	transform: scale(1);
-			//}
-		}
-
-		&.drag-overlay {
-			padding: 0;
-			opacity: 0.5;
-			border: 1px dashed darken(lightgoldenrodyellow, 50%);
-			background-color: lightgoldenrodyellow;
-
-			> li {
-				cursor: grabbing;
 			}
 		}
 	}

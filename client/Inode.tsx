@@ -33,9 +33,10 @@ export function Inode(props) {
 	function activateInode(event) {
 		if (event.detail === 1) {
 			setClickHandler(window.setTimeout(() => {
+				console.log(event.detail);
 				props.selectInode.bind(props)(event);
 				setClickHandler(null);
-			}, 150));
+			}, 250));
 		} else if (event.detail === 2) {
 			if (clickHandler) {
 				window.clearTimeout(clickHandler);
@@ -68,6 +69,11 @@ export function Inode(props) {
 export function ListItem(props) {
 	const [focusHandler, setFocusHandler] = useState(null);
 
+	function swallowEvent(event) {
+		event.stopPropagation();
+		event.preventDefault();
+	}
+
 	function handleFocus(event) {
 		// enforce two slow clicks to focus the textarea
 		if (!(event.target instanceof HTMLTextAreaElement))
@@ -80,13 +86,14 @@ export function ListItem(props) {
 				window.clearTimeout(focusHandler);
 			}
 			setFocusHandler(null);
-		}, 1500));
+		}, 2000));
 	}
 
 	function changeName(event) {
 		if (event.target.value !== props.name) {
 			props.changeInode({...props, name: event.target.value});
 		} else if (event.type === 'blur') {
+			console.log(props);
 			props.changeInode(props, true);
 		}
 	}
@@ -100,7 +107,7 @@ export function ListItem(props) {
 						{!props.folderData || props.folderData.is_trash ? (
 						<span>{props.name}</span>
 						) : (
-						<textarea name={`inode-${props.id}`} value={props.name} onFocus={handleFocus} onChange={changeName} onBlur={changeName}></textarea>
+						<textarea name={`inode-${props.id}`} value={props.name} onClick={swallowEvent} onFocus={handleFocus} onChange={changeName} onBlur={changeName}></textarea>
 						)}
 					</figcaption>
 				</figure>
@@ -114,7 +121,7 @@ export function ListItem(props) {
 				{!props.folderData || props.folderData.is_trash ? (
 					props.name
 				) : (
-					<textarea name={`inode-${props.id}`} value={props.name} onChange={changeName} onFocus={handleFocus} onBlur={changeName}></textarea>
+					<textarea name={`inode-${props.id}`} value={props.name} onClick={swallowEvent} onChange={changeName} onFocus={handleFocus} onBlur={changeName}></textarea>
 				)}
 				</div>
 				<div>
@@ -127,12 +134,18 @@ export function ListItem(props) {
 				<div>{props.mime_type}</div>
 			</>);
 		case 'columns':
-			return (
-				<figure>
+			return (<>
+				<div>
 					<img src={props.thumbnail_url} />
-					<figcaption>{props.name}</figcaption>
-				</figure>
-			);
+				</div>
+				<div>
+				{!props.folderData || props.folderData.is_trash ? (
+					props.name
+				) : (
+					<textarea name={`inode-${props.id}`} value={props.name} onClick={swallowEvent} onChange={changeName} onFocus={handleFocus} onBlur={changeName}></textarea>
+				)}
+				</div>
+			</>);
 	}
 }
 
