@@ -1,5 +1,5 @@
 import React, {useState, useRef} from 'react';
-import {DragAndDropArea} from './DragAndDropArea';
+import {InodeList} from './InodeList';
 
 
 function SelectRectangle(props) {
@@ -25,9 +25,15 @@ export function SelectableArea(props) {
 	const [activeRect, setActiveRect] = useState(null);
 	const [clickHandler, setClickHandler] = useState(null);
 
+	function switchColumn() {
+		console.log(props.depth);
+		props.setCurrentDepth(props.depth);
+	}
+
 	function selectInode(event: PointerEvent) {
 		if (this.disabled)
 			return;
+		switchColumn();
 		let modifier;
 		if (event.detail === 2) {
 			// double click
@@ -66,7 +72,7 @@ export function SelectableArea(props) {
 				setSelectedInode(inodes.findIndex(inode => inode.id === this.id));
 			}
 		}
-		setInodes(inodes.map((f, k) => ({...modifier(f, k), cutted: false, copied: false})));
+		setInodes(props.depth, inodes.map((f, k) => ({...modifier(f, k), cutted: false, copied: false})));
 	}
 
 	const selectionStart = (event) => {
@@ -162,14 +168,9 @@ export function SelectableArea(props) {
 		return classes.join(' ');
 	}
 
-	const kwargs = {
-		inodes, selectInode, settings, setInodes,
-		layout: props.layout,
-		setFavoriteFolders: props.setFavoriteFolders
-	};
 	return (
 		<div ref={areaRef} className={cssClasses()} onMouseDown={selectionStart} onMouseMove={selectionExtend} onMouseUp={selectionEnd} onMouseLeave={selectionDiscard}>
-			<DragAndDropArea {...kwargs} />
+			<InodeList {...props} selectInode={selectInode} />
 			<SelectRectangle style={activeRect} />
 		</div>
 	)

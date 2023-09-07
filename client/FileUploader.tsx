@@ -1,7 +1,7 @@
 import React, {forwardRef, useEffect, useImperativeHandle, useState, useRef} from 'react';
 
 
-function DragOverlay(props) {
+function ProgressOverlay(props) {
 	return (
 		<div className="progress-overlay">
 			<div className="progress-indicator">{
@@ -144,15 +144,15 @@ export const FileUploader = forwardRef((props: any, ref) => {
 	}
 
 	return (
-		<div className="droppable-area" onDragEnter={handleDragEnter} onDragOver={swallowEvent} onMouseLeave={handleDragLeave} onDrop={handleDrop}>
+		<div className="file-uploader" onDragEnter={handleDragEnter} onDragOver={swallowEvent} onMouseLeave={handleDragLeave} onDrop={handleDrop}>
 			{props.children}
 			<input type="file" name="file" multiple ref={inputRef} onChange={handleFileSelect} />
 			{dragging || uploading.length > 0 ? (
-				<DragOverlay dragging={dragging}>
-					{uploading.map((file, index) => (
-						<ProgressBar key={index} file={file} uploadUrl={settings.upload_files_url} CSRFToken={settings.csrf_token}/>
-					))}
-				</DragOverlay>
+			<ProgressOverlay dragging={dragging}>
+				{uploading.map((file, index) => (
+					<ProgressBar key={index} file={file} />
+				))}
+			</ProgressOverlay>
 			) : null}
 		</div>
 	)

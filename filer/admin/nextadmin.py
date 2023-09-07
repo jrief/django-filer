@@ -20,11 +20,6 @@ from filer.models.nextmodels import InodeModel, NextFolder, NextFile, PinnedFold
 
 
 class InodeAdmin(admin.ModelAdmin):
-    def Xchange_view(self, request, object_id, **kwargs):
-        if request.method == 'POST' and request.content_type == 'application/json':
-            return self.change_view_post(request, object_id, **kwargs)
-        return super().change_view(request, object_id, **kwargs)
-
     def get_fallback_folder(self, request):
         try:
             last_folder_id = request.session['filer_last_folder_id']
@@ -336,21 +331,19 @@ class FolderAdmin(InodeAdmin):
         if response := self.check_for_valid_post_request(request, folder_id):
             return response
         body = json.loads(request.body)
-        source_folder = self.get_object(request, folder_id)
-        inodes = body.get('inodes', [])
+        current_folder = self.get_object(request, folder_id)
         if 'target_folder' in body:
             if not (target_folder := self.get_object(request, body['target_folder'])):
                 return HttpResponseNotFound(f"Folder {body['target_folder']} not found.")
-            for inode in source_folder.get_children({'id__in': inodes}):
-                inode.parent = target_folder
-                inode.save(update_fields=['parent'])
         else:
-            for inode in NextFolder.objects.filter_inodes({'id__in': inodes}):
-                inode.parent = source_folder
-                inode.save(update_fields=['parent'])
+            breakpoint()
+            target_folder = current_folder
+        for inode in NextFolder.objects.filter_inodes({'id__in': body.get('inodes')}):
+            inode.parent = target_folder
+            inode.save(update_fields=['parent'])
         return JsonResponse({
-            'inodes': self.get_inodes(source_folder),
-            'favorite_folders': self.get_favorite_folders(request, source_folder),
+            'ancestors': self.get_ancestors(request, current_folder),
+            'favorite_folders': self.get_favorite_folders(request, current_folder),
         })
 
     def delete_inodes(self, request, folder_id):
