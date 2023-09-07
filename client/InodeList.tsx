@@ -1,9 +1,17 @@
 import React from 'react';
-import {Folder, File} from './Inode';
+import {useDroppable} from '@dnd-kit/core';
+import {Folder, File, Inode, ListItem} from './Inode';
 
 
 export function InodeList(props) {
-	const {inodes, setInodes, layout, settings} = props;
+	const {inodes, dragOverlay, setInodes, layout, settings} = props;
+	const {
+		isOver,
+		active,
+		setNodeRef,
+	} = useDroppable({
+		id: `depth:${props.depth}`,
+	});
 
 	function changeInode(newInode, persist?: boolean) {
 		if (persist && newInode.dirty) {
@@ -21,9 +29,22 @@ export function InodeList(props) {
 		}
 	}
 
+	if (dragOverlay) {
+		return (
+			<ul className="inode-list">
+				{inodes.filter(f => f.dragged).map(inode =>
+				(<Inode key={inode.id} {...inode}>
+					<div className="inode">
+						<ListItem {...inode} layout={layout} />
+					</div>
+				</Inode>))}
+			</ul>
+		);
+	}
+
 	return (
-		<ul className="inode-list">
-		{layout === 'list' ? (
+		<ul ref={setNodeRef} className={`inode-list${isOver ? ' is-over': ''}`}>
+			{layout === 'list' ? (
 			<li className="header">
 				<div className="inode">
 					<div></div>
@@ -34,13 +55,11 @@ export function InodeList(props) {
 					<div>Mime type</div>
 				</div>
 			</li>
-		) : null}
-		{inodes.map(inode =>
-			(inode.is_folder
+			) : null}
+			{inodes.map(inode => (inode.is_folder
 			? <Folder key={inode.id} {...inode} {...props} changeInode={changeInode} />
 			: <File key={inode.id} {...inode} {...props} changeInode={changeInode} />
-			)
-		)}
+			))}
 		</ul>
 	)
 }

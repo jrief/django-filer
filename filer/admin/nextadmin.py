@@ -336,7 +336,6 @@ class FolderAdmin(InodeAdmin):
             if not (target_folder := self.get_object(request, body['target_folder'])):
                 return HttpResponseNotFound(f"Folder {body['target_folder']} not found.")
         else:
-            breakpoint()
             target_folder = current_folder
         for inode in NextFolder.objects.filter_inodes({'id__in': body.get('inodes')}):
             inode.parent = target_folder

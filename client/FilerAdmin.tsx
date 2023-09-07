@@ -4,7 +4,6 @@ import {
 	DragOverlay,
 	PointerSensor,
 	pointerWithin,
-	useDroppable,
 	useSensor,
 	useSensors
 } from '@dnd-kit/core';
@@ -14,7 +13,7 @@ import {FileUploader} from './FileUploader';
 import {FolderTabs} from './FolderTabs';
 import {MenuBar} from './MenuBar';
 import {SelectableArea} from './SelectableArea';
-import {Inode, ListItem} from "./Inode";
+import {InodeList} from './InodeList';
 
 
 export default function FilerAdmin(props) {
@@ -238,12 +237,11 @@ export default function FilerAdmin(props) {
 
 	async function handleDragEnd(event) {
 		const {active, over} = event;
-		console.log("drag end");
-		console.log(event);
 		setDraggedIds(null);
 		const inodes = ancestors[currentDepth];
 		setInodes(currentDepth, inodes.map(inode => ({...inode, dragged: false})));
 		if (over && active.id !== over.id) {
+			overlayRef.current.hidden = true;
 			const draggedInodes = inodes.filter(inode => inode.dragged);
 			if (over.id === 'download-droppable')
 				return downloadFiles(draggedInodes);
@@ -258,7 +256,9 @@ export default function FilerAdmin(props) {
 					inodes: draggedInodes.map(inode => inode.id),
 					target_folder: over.id,
 				}),
-			}).then(handleResponse);
+			}).then(handleResponse).finally(() => {
+				overlayRef.current.hidden = false;
+			});
 		}
 	}
 
@@ -318,15 +318,9 @@ export default function FilerAdmin(props) {
 			{/*	<TrashIcon />*/}
 			{/*</AlternativeDroppable>*/}
 			{/*</>)}*/}
-			<div ref={overlayRef} className={`drag-overlay ${layout}`}>
-				<DragOverlay wrapperElement="ul" className="inode-list" modifiers={modifiers}>
-				{ancestors[currentDepth].filter(f => f.dragged).map(inode => (
-					<Inode key={inode.id} {...inode}>
-						<div className="inode">
-							<ListItem {...inode} layout={layout} />
-						</div>
-					</Inode>
-				))}
+			<div ref={overlayRef}>
+				<DragOverlay className={`drag-overlay ${layout}`} style={overlayStyle} modifiers={modifiers}>
+					<InodeList inodes={ancestors[currentDepth]} layout={layout} dragOverlay={true} />
 				</DragOverlay>
 			</div>
 		</DndContext>
