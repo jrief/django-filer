@@ -13,29 +13,52 @@ import {FileUploader} from './FileUploader';
 import {FolderTabs} from './FolderTabs';
 import {MenuBar} from './MenuBar';
 import {SelectableArea} from './SelectableArea';
-import {InodeList} from './InodeList';
+import {DraggedInodes} from './InodeList';
+import {Droppable} from "./Droppable";
+import DownloadIcon from './icons/download.svg';
+import TrashIcon from './icons/trash.svg';
 
 
 export default function FilerAdmin(props) {
 	const {settings} = props;
+	const primaryFolderId = settings.ancestors[0].folder;
 	const uploaderRef = useRef(null);
 	const overlayRef = useRef(null);
-	const [ancestors, setAncestors] = useState(settings.ancestors);
-	const [favoriteFolders, setFavoriteFolders] = useState(settings.favorite_folders);
-	const [currentDepth, setCurrentDepth] = useState(0);
-	const [layout, setLayout] = useLayout('tiles');
+	const downloadLinkRef = useRef(null);
 	const [clipboard, setClipboard] = useClipboard();
+	const [ancestors, setAncestors] = useState(initializeAncestors());
+	const [currentFolderId, setCurrentFolder] = useState(primaryFolderId);
+	const [favoriteFolders, setFavoriteFolders] = useState(settings.favorite_folders);
+	const [layout, setLayout] = useLayout('tiles');
 	const [draggedIds, setDraggedIds] = useState(null);
 	const sensors = useSensors(
 		useSensor(PointerSensor, {
 			activationConstraint: {distance: 4},
 		}),
 	);
-	const modifiers = [modifyMovement, restrictToWindowEdges];
+	const dragModifiers = [modifyMovement, restrictToWindowEdges];
 	const overlayStyle = {
 		height: 'fit-content',
 		width: 'fit-content',
 	};
+
+	function initializeAncestors() {
+		return settings.ancestors.map(ancestor => ({
+			folder: ancestor.folder,
+			inodes: ancestor.inodes.map(inode => {
+				const entry = clipboard.find(entry => entry.id === inode.id);
+				return entry ? {...inode, cutted: entry.cutted, copied: entry.copied} : inode;
+			}),
+		}));
+	}
+
+	function clearClipboard() {
+		setClipboard([]);
+		// setAncestors(ancestors.map(ancestor => ({
+		// 	folder: ancestor.folder,
+		// 	inodes: ancestor.inodes.map(inode => ({...inode, cutted: false, copied: false})),
+		// })));
+	}
 
 	function modifyMovement(args) {
 		const {transform} = args;
@@ -58,27 +81,30 @@ export default function FilerAdmin(props) {
 		};
 	}
 
-	function setInodes(depth, inodes) {
-		setAncestors(ancestors.map((ancestor, index) => {
-			if (index === depth)
-				return inodes;
-			return ancestor.map(inode => ({...inode, selected: false, cutted: false, copied: false}));
+	function setInodes(folderId, inodes, modifier=inode => ({...inode, selected: false})) {
+		if (folderId !== currentFolderId) {
+			setCurrentFolder(folderId);
+		}
+		setAncestors(ancestors.map(ancestor => {
+			return {
+				folder: ancestor.folder,
+				inodes: ancestor.folder === folderId
+					? inodes
+					: ancestor.inodes.map(inode => modifier(inode)),
+			};
 		}));
 	}
 
-	function refreshFolder() {
-		debugger;
-		console.log('refreshFolder');
-		fetch(settings.fetch_inodes_url).then(handleResponse);
-	}
-
 	function deselectAll(event) {
-		setAncestors(ancestors.map(ancestor => ancestor.map(inode => ({...inode, selected: false}))));
+		setAncestors(ancestors.map(ancestor => ({
+			folder: ancestor.folder,
+			inodes: ancestor.inodes.map(inode => ({...inode, selected: false})),
+		})));
+		setCurrentFolder(primaryFolderId);
 	}
 
 	async function addFolder() {
 		const folderName = window.prompt("Enter folder name");
-		const inodes = ancestors[currentDepth];
 		if (!folderName)
 			return;
 		const response = await fetch(settings.add_folder_url, {
@@ -91,71 +117,62 @@ export default function FilerAdmin(props) {
 				name: folderName,
 			}),
 		});
+		const inodes = ancestors.find(ancestor => ancestor.folder === primaryFolderId).inodes;
 		if (response.status === 200) {
 			const data = await response.json();
-			setInodes(currentDepth, [...inodes, data.new_folder]);
+			setInodes(primaryFolderId, [...inodes, data.new_folder]);
 		} else {
 			console.error(response);
 		}
 	}
 
 	function copyInodes() {
-		const inodes = ancestors[currentDepth];
+		const inodes = getCurrentInodes();
 		setClipboard(inodes.filter(inode => inode.selected).map(inode => ({...inode, selected: false, copied: true})));
-		setInodes(currentDepth, inodes.map(inode => ({...inode, copied: inode.selected, selected: false})));
+		setInodes(currentFolderId, inodes.map(inode => ({...inode, selected: false, copied: inode.selected})));
 	}
 
 	function cutInodes() {
-		const inodes = ancestors[currentDepth];
+		const inodes = getCurrentInodes();
 		setClipboard(inodes.filter(inode => inode.selected).map(inode => ({...inode, selected: false, cutted: true})));
-		setInodes(currentDepth, inodes.map(inode => ({...inode, cutted: inode.selected, selected: false})));
+		setInodes(currentFolderId, inodes.map(inode => ({...inode, selected: false, cutted: inode.selected})));
 	}
 
-	async function pasteInodes() {
+	function pasteInodes() {
 		let fetchUrl;
-		let pastedInodes = clipboard.filter(inode => inode.copied).map(inode => inode.id);
-		if (pastedInodes.length) {
+		let inodes = clipboard.filter(inode => inode.copied).map(inode => inode.id);
+		if (inodes.length) {
 			fetchUrl = settings.copy_inodes_url;
 		} else {
-			pastedInodes = clipboard.filter(inode => inode.cutted).map(inode => inode.id);
-			if (pastedInodes.length) {
+			inodes = clipboard.filter(inode => inode.cutted).map(inode => inode.id);
+			if (inodes.length) {
 				fetchUrl = settings.move_inodes_url;
 			}
 		}
+		clearClipboard();
 		if (!fetchUrl)
 			return;
 
-		const response = await fetch(fetchUrl, {
+		fetch(fetchUrl, {
 			method: 'POST',
 			headers: {
 				'Content-Type': 'application/json',
 				'X-CSRFToken': settings.csrf_token,
 			},
-			body: JSON.stringify({
-				inodes: pastedInodes
-			}),
-		});
-		if (response.status === 200) {
-			const data = await response.json();
-			setInodes(currentDepth, data.inodes);
-			setFavoriteFolders(data.favorite_folders);
-			setClipboard([]);
-		}
+			body: JSON.stringify({inodes}),
+		}).then(handleResponse);
 	}
 
 	function deleteInodes() {
-		setClipboard([]);
-		const inodes = ancestors[currentDepth];
-		const selectedInodes = inodes.filter(inode => inode.selected).map(inode => inode.id);
+		clearClipboard();
+		const inodes = getCurrentInodes().filter(inode => inode.selected).map(inode => inode.id);
 		fetch(settings.delete_inodes_url, {
 			method: 'POST',
 			headers: {
 				'Content-Type': 'application/json',
 				'X-CSRFToken': settings.csrf_token,
 			},
-			body: JSON.stringify({
-				inodes: selectedInodes
-			}),
+			body: JSON.stringify({inodes}),
 		}).then(handleResponse);
 	}
 
@@ -198,15 +215,15 @@ export default function FilerAdmin(props) {
 	function switchLayout(newLayout: string) {
 		setLayout(newLayout);
 		if (newLayout !== layout && newLayout === 'columns') {
-			window.location.reload();
+			fetch(settings.refresh_url).then(handleResponse);
 		}
 	}
 
 	function downloadFiles(draggedInodes) {
 		draggedInodes.forEach(inode => {
-			// downloadLinkRef.current.href = inode.url;
-			// downloadLinkRef.current.download = inode.name;
-			// downloadLinkRef.current.click();
+			downloadLinkRef.current.href = inode.url;
+			downloadLinkRef.current.download = inode.name;
+			downloadLinkRef.current.click();
 		});
 	}
 
@@ -223,29 +240,40 @@ export default function FilerAdmin(props) {
 
 	function handleDragStart(event) {
 		const {active} = event;
+		const folderId = active.data.current.folderId;
 		console.log("drag start");
-		const inodes = ancestors[currentDepth];
+		console.log(event);
+		const inodes = ancestors.find(ancestor => ancestor.folder === folderId).inodes;
 		const multiSelected = inodes.some(inode => inode.selected && inode.id === active.id);
 		const draggedInodes= multiSelected
 			? inodes.map(inode => ({...inode, dragged: inode.selected}))
 			: inodes.map(inode => ({...inode, dragged: inode.id === active.id, selected: false}));
 		const firstDraggedIndex = draggedInodes.findIndex(inode => inode.dragged);
 		setDraggedIds(firstDraggedIndex !== -1 ? [draggedInodes[firstDraggedIndex].id, active.id] : null);
-		setInodes(currentDepth, draggedInodes);
+		setInodes(folderId, draggedInodes);
 		console.log(draggedInodes.filter(inode => inode.dragged));
 	}
 
-	async function handleDragEnd(event) {
+	function handleDragEnd(event) {
 		const {active, over} = event;
+		const folderId = active.data.current.folderId;
 		setDraggedIds(null);
-		const inodes = ancestors[currentDepth];
-		setInodes(currentDepth, inodes.map(inode => ({...inode, dragged: false})));
-		if (over && active.id !== over.id) {
-			overlayRef.current.hidden = true;
+		const inodes = ancestors.find(ancestor => ancestor.folder === folderId).inodes;
+		setInodes(folderId, inodes.map(inode => ({...inode, dragged: false})));
+		if (over) {
+			const [what, targetFolder] = over.id.split(':');
 			const draggedInodes = inodes.filter(inode => inode.dragged);
-			if (over.id === 'download-droppable')
-				return downloadFiles(draggedInodes);
-			const fetchUrl = over.id === 'recycle-droppable' ? settings.delete_inodes_url : settings.move_inodes_url;
+			if (what === 'column' && draggedInodes.every(inode => inode.parent === targetFolder))
+				return;
+			overlayRef.current.hidden = true;
+			if (what === 'download') {
+				downloadFiles(draggedInodes);
+				setTimeout(() => {
+					overlayRef.current.hidden = false;
+				}, 1000);
+				return;
+			}
+			const fetchUrl = what === 'discard' ? settings.delete_inodes_url : settings.move_inodes_url;
 			fetch(fetchUrl, {
 				method: 'POST',
 				headers: {
@@ -254,7 +282,7 @@ export default function FilerAdmin(props) {
 				},
 				body: JSON.stringify({
 					inodes: draggedInodes.map(inode => inode.id),
-					target_folder: over.id,
+					target_folder: targetFolder,
 				}),
 			}).then(handleResponse).finally(() => {
 				overlayRef.current.hidden = false;
@@ -263,11 +291,71 @@ export default function FilerAdmin(props) {
 	}
 
 	function handleDragCancel() {
-		const inodes = ancestors[currentDepth];
-		setInodes(currentDepth, inodes.map(inode => ({...inode, dragged: false})));
+		setAncestors(ancestors.map(ancestor => ({
+			folder: ancestor.folder,
+			inodes: ancestor.inodes.map(inode => ({...inode, dragged: false})),
+		})));
 	}
 
-	const kwargs = {deselectAll, handleResponse, setInodes, setCurrentDepth, settings};
+	function getCurrentInodes() {
+		return ancestors.find(ancestor => ancestor.folder === currentFolderId).inodes;
+	}
+
+	function getNumSelected() {
+		return getCurrentInodes().filter(inode => inode.selected).length;
+	}
+
+	const kwargs = {deselectAll, handleResponse, setInodes, currentFolderId, settings, clearClipboard};
+
+	function renderWorkArea() {
+		if (settings.is_trash) return (
+			<div className="work-area tiles">
+				<SelectableArea {...kwargs} folderId={ancestors[0].folder} inodes={ancestors[0].inodes} layout="tiles" />
+			</div>
+		);
+
+		if (layout !== 'columns') return (
+			<div className={`work-area ${layout}`}>
+				<FileUploader ref={uploaderRef} folderId={primaryFolderId} settings={settings} handleResponse={handleResponse}>
+					<SelectableArea {...kwargs} folderId={primaryFolderId} inodes={ancestors[0].inodes} layout={layout} />
+				</FileUploader>
+			</div>
+		);
+
+		let previousFolder = null;
+		return (
+			<div className={`work-area ${layout}`}>{
+				ancestors.map(ancestor => {
+					const snippet = (
+					<FileUploader
+						key={ancestor.folder}
+						ref={ancestor.folder === primaryFolderId ? uploaderRef : null}
+						folderId={ancestor.folder}
+						settings={settings}
+						handleResponse={handleResponse}
+					>
+						<SelectableArea {...kwargs} folderId={ancestor.folder} inodes={ancestor.inodes} layout={layout} previousFolder={previousFolder} />
+					</FileUploader>
+					);
+					previousFolder = ancestor.folder;
+					return snippet;
+				})
+			}</div>
+		);
+	}
+
+	function renderDroppables() {
+		return (<>
+			<Droppable id="download:droppable" className="download-droppable" dragging={Boolean(draggedIds)}>
+				<DownloadIcon />
+			</Droppable>
+			<a ref={downloadLinkRef} download="download" hidden />
+			<Droppable id="discard:droppable" className="discard-droppable" dragging={Boolean(draggedIds)}>
+				<TrashIcon />
+			</Droppable>
+		</>);
+	}
+
 	return (<>
 		<MenuBar
 			clipboard={clipboard}
@@ -282,7 +370,7 @@ export default function FilerAdmin(props) {
 			eraseTrashFolder={eraseTrashFolder}
 			isRoot={settings.is_root}
 			isTrash={settings.is_trash}
-			numSelected={ancestors[currentDepth].filter(inode => inode.selected).length}
+			numSelected={getNumSelected()}
 		/>
 		<DndContext
 			onDragStart={handleDragStart}
@@ -292,35 +380,11 @@ export default function FilerAdmin(props) {
 			collisionDetection={pointerWithin}
 		>
 			<FolderTabs activeFolderId={settings.id} folders={favoriteFolders} togglePin={togglePin} />
-			{settings.is_trash ? (
-			<div className="work-area tiles">
-				<SelectableArea {...kwargs} inodes={ancestors[0]} layout="tiles" />
-			</div>
-			) : (
-			<div className={`work-area ${layout}`}>
-			{layout === 'columns' ? ancestors.map((inodes, depth) => (
-				<FileUploader ref={uploaderRef} key={depth} settings={settings} refreshFolder={refreshFolder}>
-					<SelectableArea {...kwargs} depth={depth} inodes={inodes} layout={layout} />
-				</FileUploader>
-				)) : (
-				<FileUploader ref={uploaderRef} settings={settings} refreshFolder={refreshFolder}>
-					<SelectableArea {...kwargs} depth={0} inodes={ancestors[0]} layout={layout} />
-				</FileUploader>
-			)}
-			</div>
-			)}
-			{/*{settings.is_trash ? null : (<>*/}
-			{/*<AlternativeDroppable id="download-droppable" className="download-droppable">*/}
-			{/*	<DownloadIcon />*/}
-			{/*</AlternativeDroppable>*/}
-			{/*<a ref={downloadLinkRef} download="download" hidden />*/}
-			{/*<AlternativeDroppable id="recycle-droppable" className="recycle-droppable">*/}
-			{/*	<TrashIcon />*/}
-			{/*</AlternativeDroppable>*/}
-			{/*</>)}*/}
+			{renderWorkArea()}
+			{settings.is_trash ? null : renderDroppables()}
 			<div ref={overlayRef}>
-				<DragOverlay className={`drag-overlay ${layout}`} style={overlayStyle} modifiers={modifiers}>
-					<InodeList inodes={ancestors[currentDepth]} layout={layout} dragOverlay={true} />
+				<DragOverlay className={`drag-overlay ${layout}`} style={overlayStyle} modifiers={dragModifiers}>
+					<DraggedInodes inodes={getCurrentInodes()} layout={layout} />
 				</DragOverlay>
 			</div>
 		</DndContext>

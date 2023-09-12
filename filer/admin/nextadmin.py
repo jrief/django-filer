@@ -1,4 +1,5 @@
 import json
+import uuid
 
 from django.contrib import admin
 from django.contrib.admin.utils import unquote
@@ -74,7 +75,7 @@ class InodeAdmin(admin.ModelAdmin):
         Return a serialized list of file/folder-s for the given folder.
         """
         inodes = []
-        extra_data_fields = ['owner_name', 'is_folder', 'thumbnail_url']
+        extra_data_fields = ['owner_name', 'is_folder', 'thumbnail_url', 'parent']
         for inode_model in InodeModel.all_models:
             queryset = inode_model.objects.select_related('owner') \
                 .filter(parent=folder) \
@@ -94,7 +95,10 @@ class InodeAdmin(admin.ModelAdmin):
     def get_ancestors(self, request, folder):
         ancestors = []
         while folder:
-            ancestors.append(self.get_inodes(folder))
+            ancestors.append({
+                'folder': folder.id,
+                'inodes': self.get_inodes(folder),
+            })
             if request.COOKIES.get('django-filer-layout') != 'columns':
                 break  # not required for layout in ['tiles', 'list']
             folder = folder.parent
@@ -124,8 +128,8 @@ class FolderAdmin(InodeAdmin):
         urls = [
             path(
                 '<uuid:folder_id>/fetch',
-                self.admin_site.admin_view(self.fetch_inodes),
-                name='filer_fetch_inodes',
+                self.admin_site.admin_view(self.fetch_ancestors),
+                name='filer_fetch_ancestors',
             ),
             path(
                 '<uuid:folder_id>/upload',
@@ -196,15 +200,15 @@ class FolderAdmin(InodeAdmin):
         trash_folder = NextFolder.objects.get_trash_folder(owner=request.user)
         favorite_folders = self.get_favorite_folders(request, obj)
         if trash_folder.id != obj.id:
+            upload_files_uuid = uuid.UUID(32 * '0')
             context.update(folder_settings=dict(
                 id=obj.id,
                 name=obj.name,
                 is_root=obj.is_root,
                 is_trash=False,
                 ancestors=self.get_ancestors(request, obj),
-                #inodes=self.get_inodes(obj),  # TODO: deprecated; shall be replaced by ancestors
-                fetch_inodes_url=reverse('admin:filer_fetch_inodes', args=(obj.id,)),
-                upload_files_url=reverse('admin:filer_upload_files', args=(obj.id,)),
+                refresh_url=reverse('admin:filer_fetch_ancestors', args=(obj.id,)),
+                upload_files_url=reverse('admin:filer_upload_files', args=(upload_files_uuid,)),
                 update_inode_url=reverse('admin:filer_update_inode', args=(obj.id,)),
                 copy_inodes_url=reverse('admin:filer_copy_inodes', args=(obj.id,)),
                 move_inodes_url=reverse('admin:filer_move_inodes', args=(obj.id,)),
@@ -226,7 +230,6 @@ class FolderAdmin(InodeAdmin):
                 is_root=False,
                 is_trash=True,
                 ancestors=self.get_ancestors(request, obj),
-                #inodes=self.get_inodes(obj),  # TODO: deprecated; shall be replaced by ancestors
                 move_inodes_url=reverse('admin:filer_move_inodes', args=(obj.id,)),
                 erase_trash_folder_url=reverse('admin:filer_erase_trash_folder'),
                 toggle_pin_url=reverse('admin:filer_toggle_pin', args=(obj.id,)),
@@ -267,10 +270,13 @@ class FolderAdmin(InodeAdmin):
                 self._model_admin_cache[mime_type] = self.admin_site._registry.get(NextFile)
         return self._model_admin_cache[mime_type]
 
-    def fetch_inodes(self, request, folder_id):
-        if not (folder := self.get_object(request, folder_id)):
+    def fetch_ancestors(self, request, folder_id):
+        if not (current_folder := self.get_object(request, folder_id)):
             return HttpResponseNotFound(f"Folder {folder_id} not found.")
-        return JsonResponse({'inodes': self.get_inodes(folder)})
+        return JsonResponse({
+            'ancestors': self.get_ancestors(request, current_folder),
+            'favorite_folders': self.get_favorite_folders(request, current_folder),
+        })
 
     def upload_files(self, request, folder_id):
         if request.method != 'POST':
@@ -323,7 +329,7 @@ class FolderAdmin(InodeAdmin):
         for inode in NextFolder.objects.filter_inodes({'id__in': body['inodes']}):
             inode.copy_to(source_folder, owner=request.user)
         return JsonResponse({
-            'inodes': self.get_inodes(source_folder),
+            'ancestors': self.get_ancestors(request, source_folder),
             'favorite_folders': self.get_favorite_folders(request, source_folder),
         })
 
@@ -358,7 +364,7 @@ class FolderAdmin(InodeAdmin):
             inode.parent = trash_folder
             inode.save(update_fields=['parent'])
         return JsonResponse({
-            'inodes': self.get_inodes(current_folder),
+            'ancestors': self.get_ancestors(request, current_folder),
             'favorite_folders': self.get_favorite_folders(request, current_folder),
         })
 

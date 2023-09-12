@@ -19,21 +19,15 @@ function SelectRectangle(props) {
 
 
 export function SelectableArea(props) {
-	const {settings, inodes, setInodes} = props;
+	const {settings, inodes, setInodes, folderId, clearClipboard} = props;
 	const areaRef = useRef(null);
 	const [lastSelectedInode, setSelectedInode] = useState(-1);
 	const [activeRect, setActiveRect] = useState(null);
 	const [clickHandler, setClickHandler] = useState(null);
 
-	function switchColumn() {
-		console.log(props.depth);
-		props.setCurrentDepth(props.depth);
-	}
-
 	function selectInode(event: PointerEvent) {
 		if (this.disabled)
 			return;
-		switchColumn();
 		let modifier;
 		if (event.detail === 2) {
 			// double click
@@ -50,7 +44,7 @@ export function SelectableArea(props) {
 			const selectedInodeIndex = inodes.findIndex(f => f.id === this.id);
 			if (selectedInodeIndex < lastSelectedInode) {
 				modifier = (f, k) => ({...f, selected: k >= selectedInodeIndex && k <= lastSelectedInode});
-			} else if (selectedInodeIndex > lastSelectedInode) {
+			} else if (lastSelectedInode !== -1 && selectedInodeIndex > lastSelectedInode) {
 				modifier = (f, k) => ({...f, selected: k >= lastSelectedInode && k <= selectedInodeIndex});
 			}
 		} else if (event.altKey || event.ctrlKey || event.metaKey) {
@@ -72,7 +66,12 @@ export function SelectableArea(props) {
 				setSelectedInode(inodes.findIndex(inode => inode.id === this.id));
 			}
 		}
-		setInodes(props.depth, inodes.map((f, k) => ({...modifier(f, k), cutted: false, copied: false})));
+		setInodes(
+			folderId,
+			inodes.map((f, k) => ({...modifier(f, k), cutted: false, copied: false})),
+			inode => ({...inode, cutted: false, copied: false, selected: false}),
+		);
+		clearClipboard();
 	}
 
 	const selectionStart = (event) => {
@@ -122,11 +121,12 @@ export function SelectableArea(props) {
 	};
 
 	const selectionEnd = () => {
-		function inside(x: number, y: number) : boolean {
-			return (
-				x >= activeRect.left && x <= activeRect.left + activeRect.width
-				&& y >= activeRect.top && y <= activeRect.top + activeRect.height
-			);
+		function overlaps(rect: DOMRect) : boolean {
+			if (rect.x >= activeRect.left + activeRect.width || activeRect.left >= rect.right)
+				return false;
+			if (rect.y >= activeRect.top + activeRect.height || activeRect.top >= rect.bottom)
+				return false;
+			return true;
 		}
 
 		if (!activeRect)
@@ -138,11 +138,8 @@ export function SelectableArea(props) {
 		const elements = areaRef.current.querySelectorAll('.inode-list > li');
 		for (let element of elements) {
 			const elemRect = element.getBoundingClientRect();
-			if (
-				inside(elemRect.x, elemRect.y) || inside(elemRect.right, elemRect.y)
-				|| inside(elemRect.x, elemRect.bottom) || inside(elemRect.right, elemRect.bottom)
-			) {
-				console.log(element);
+			console.log(elemRect);
+			if (overlaps(elemRect)) {
 				setTimeout(() => {
 					const event = new CustomEvent('click', {
 						bubbles: true,
@@ -152,6 +149,9 @@ export function SelectableArea(props) {
 					element.dispatchEvent(event);
 				}, 0);
 			}
+		}
+		if (elements.length) {
+			clearClipboard();
 		}
 		selectionDiscard();
 	};

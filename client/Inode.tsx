@@ -9,6 +9,7 @@ export function Inode(props) {
 		setNodeRef,
 	} = useDraggable({
 		id: props.id,
+		data: props,
 		disabled: props.disabled,
 	});
 	const [clickHandler, setClickHandler] = useState(null);
@@ -31,6 +32,7 @@ export function Inode(props) {
 	}
 
 	function activateInode(event) {
+		console.log(event);
 		if (event.detail === 1) {
 			setClickHandler(window.setTimeout(() => {
 				console.log(event.detail);
@@ -166,12 +168,15 @@ export function Folder(props) {
 		active,
 		setNodeRef,
 	} = useDroppable({
-		id: props.id,
+		id: `folder:${props.id}`,
 		disabled: props.disabled,
 	});
 
 	function cssClasses() {
 		const classes = ['inode'];
+		if (props.isParent) {
+			classes.push('parent');
+		}
 		if (isOver && active.id !== props.id) {
 			classes.push('drag-over');
 		}

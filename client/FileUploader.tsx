@@ -20,16 +20,17 @@ function ProgressOverlay(props) {
 
 
 function ProgressBar(props) {
-	const {file, uploadUrl, CSRFToken} = props;
+	const {file, folderId, settings} = props;
 	const [complete, setComplete] = useState(0);
+	const uploadFilesURL = settings.upload_files_url.replace('00000000-0000-0000-0000-000000000000', folderId);
 
 	useEffect(() => {
 		const request = new XMLHttpRequest();
 		request.addEventListener('loadstart', transferStart);
 		request.upload.addEventListener('progress', transferProgress, false);
 		request.addEventListener('loadend', transferComplete);
-		request.open('POST', uploadUrl, true);
-		request.setRequestHeader('X-CSRFToken', CSRFToken);
+		request.open('POST', uploadFilesURL, true);
+		request.setRequestHeader('X-CSRFToken', settings.csrf_token);
 		request.responseType = 'json';
 		const body = new FormData();
 		body.append('upload_file', file);
@@ -77,7 +78,7 @@ function ProgressBar(props) {
 
 
 export const FileUploader = forwardRef((props: any, ref) => {
-	const {settings} = props;
+	const {folderId, handleResponse, settings} = props;
 	const inputRef = useRef(null);
 	const [dragging, setDragging] = useState(false);
 	const [uploading, setUploading] = useState([]);
@@ -103,7 +104,10 @@ export const FileUploader = forwardRef((props: any, ref) => {
 	function handleDragLeave(event) {
 		console.log('handleDragLeave');
 		swallowEvent(event);
-		setDragging(false);
+		const {relatedTarget} = event;
+		if (!relatedTarget || !event.currentTarget.contains(relatedTarget)) {
+			setDragging(false);
+		}
 	}
 
 	function handleDrop(event) {
@@ -130,9 +134,9 @@ export const FileUploader = forwardRef((props: any, ref) => {
 			console.log('uploaded all files');
 		}).catch((error) => {
 			alert(error);
-		}).finally(() => {
+		}).finally( () => {
 			setUploading([]);
-			props.refreshFolder();
+			fetch(settings.refresh_url).then(handleResponse);
 		});
 	}
 
@@ -144,15 +148,15 @@ export const FileUploader = forwardRef((props: any, ref) => {
 	}
 
 	return (
-		<div className="file-uploader" onDragEnter={handleDragEnter} onDragOver={swallowEvent} onMouseLeave={handleDragLeave} onDrop={handleDrop}>
+		<div className="file-uploader" onDragEnter={handleDragEnter} onDragOver={swallowEvent} onDragLeave={handleDragLeave} onDrop={handleDrop}>
 			{props.children}
-			<input type="file" name="file" multiple ref={inputRef} onChange={handleFileSelect} />
+			<input type="file" name={`file:${folderId}`} multiple ref={inputRef} onChange={handleFileSelect} />
 			{dragging || uploading.length > 0 ? (
-			<ProgressOverlay dragging={dragging}>
-				{uploading.map((file, index) => (
-					<ProgressBar key={index} file={file} />
-				))}
-			</ProgressOverlay>
+			<ProgressOverlay dragging={dragging}>{
+			uploading.map((file, index) =>
+				<ProgressBar key={index} file={file} folderId={folderId} settings={settings} />
+			)
+			}</ProgressOverlay>
 			) : null}
 		</div>
 	)

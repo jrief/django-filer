@@ -21,9 +21,19 @@ export const useLayout = (initial: string) : [string, (value: string) => any] =>
 		document.cookie.split('; ').find(row => row.startsWith(`${key}=`))?.split('=')[1] ?? initial
 	);
 
-	useEffect(() => {
+	function setCookie(value) {
 		document.cookie = `${key}=${value}; path=/; expires=Fri, 31 Dec 9999 23:59:59 GMT; SameSite=Lax;`;
+	}
+
+	useEffect(() => {
+		setCookie(value);
 	}, [value, key]);
 
-	return [value, setValue];
+	return [
+		value,
+		value => {
+			setCookie(value);
+			setValue(value);
+		},
+	];
 }

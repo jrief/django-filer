@@ -1,10 +1,9 @@
+import React from 'react';
 import {useDroppable} from '@dnd-kit/core';
-import DownloadIcon from './icons/download.svg';
-import TrashIcon from './icons/trash.svg';
 
 
-export function AlternativeDroppable(props) {
-	const {id, className, children} = props;
+export function Droppable(props) {
+	const {id, className, children, dragging} = props;
 	const {
 		isOver,
 		setNodeRef,
@@ -14,6 +13,9 @@ export function AlternativeDroppable(props) {
 
 	function cssClasses() {
 		const classes = [className];
+		if (dragging) {
+			classes.push('dragging');
+		}
 		if (isOver) {
 			classes.push('drag-over');
 		}
