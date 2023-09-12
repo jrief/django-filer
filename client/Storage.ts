@@ -1,19 +1,23 @@
 import {useEffect, useState} from 'react';
 
 
-export const useClipboard = () => {
-	const storageKey = 'filer-clipboard';
-	const [value, setValue] = useState(
-		JSON.parse(sessionStorage.getItem(storageKey)) ?? []
-	);
+function useSessionStorage(storageKey, initial) {
+	return () => {
+		const [value, setValue] = useState(
+			JSON.parse(sessionStorage.getItem(storageKey)) ?? initial
+		);
 
-	useEffect(() => {
-		sessionStorage.setItem(storageKey, JSON.stringify(value));
-	}, [value, storageKey]);
+		useEffect(() => {
+			sessionStorage.setItem(storageKey, JSON.stringify(value));
+		}, [value, storageKey]);
 
-	return [value, setValue];
-};
+		return [value, setValue];
+	};
+}
 
+export const useClipboard = useSessionStorage('filer-clipboard', []);
+
+export const useHistory = useSessionStorage('filer-history', {cursor: -1, hrefs: []});
 
 export const useLayout = (initial: string) : [string, (value: string) => any] => {
 	const key = 'django-filer-layout';

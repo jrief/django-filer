@@ -1,8 +1,4 @@
-import React from 'react';
-import BackIcon from './icons/back.svg';
-import ForwardIcon from './icons/forward.svg';
-import UpIcon from './icons/up.svg';
-import ClockIcon from './icons/clock.svg';
+import React, {useState} from 'react';
 import CopyIcon from './icons/copy.svg';
 import TilesIcon from './icons/tiles.svg';
 import ListIcon from './icons/list.svg';
@@ -16,15 +12,6 @@ import UploadIcon from './icons/upload.svg';
 
 
 export function MenuBar(props) {
-	function navigateBack() {
-	}
-
-	function navigateForward() {
-	}
-
-	function showHistory() {
-	}
-
 	function confirmEraseTrashFolder() {
 		if (window.confirm("Erase all files in the trash folder?")) {
 			props.eraseTrashFolder();
@@ -34,10 +21,6 @@ export function MenuBar(props) {
 	return (
 		<nav role="menubar">
 			<ul>
-				<li onClick={navigateBack}><BackIcon /></li>
-				<li onClick={navigateForward}><ForwardIcon /></li>
-				<li className={props.parentUrl ? null : "disabled"}><a href={props.parentUrl}><UpIcon /></a></li>
-				<li onClick={showHistory}><ClockIcon /></li>
 				<li style={{marginLeft: 'auto'}} onClick={() => props.setLayout('tiles')}><TilesIcon /></li>
 				<li onClick={() => props.setLayout('list')}><ListIcon /></li>
 				<li style={{marginRight: 'auto'}} onClick={() => props.setLayout('columns')}><ColumnsIcon /></li>

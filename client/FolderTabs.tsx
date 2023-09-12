@@ -4,6 +4,7 @@ import PinIcon from './icons/pin.svg';
 import UnpinIcon from './icons/unpin.svg';
 import RecycleIcon from './icons/recycle.svg';
 import RootIcon from './icons/root.svg';
+import UpIcon from './icons/up.svg';
 
 
 function FolderTab(props) {
@@ -36,17 +37,23 @@ function FolderTab(props) {
 		return classes.join(' ');
 	}
 
+	function renderFolder(folder) {
+		return (<>
+			{folder.name}
+			<span onClick={togglePin.bind(folder)}>{folder.is_pinned ? <UnpinIcon /> : <PinIcon/>}</span>
+		</>);
+	}
+
 	return (
 		<li
 			ref={setNodeRef}
 			className={cssClasses(folder)}
 			onClick={() => window.location.assign(folder.url)}
 			title={folder.is_root ? "Root folder" : folder.is_trash ? "Trash folder" : folder.name}
-		>
-			{folder.is_root ? <RootIcon /> : folder.is_trash ? <RecycleIcon /> : folder.name}
-			{folder.is_root || folder.is_trash ? null : <span onClick={togglePin.bind(folder)}>{folder.is_pinned ? <UnpinIcon /> : <PinIcon/>}</span>}
-		</li>
-	)
+		>{
+			folder.is_root ? <RootIcon /> : folder.is_trash ? <RecycleIcon /> : renderFolder(folder)
+		}</li>
+	);
 }
 
 export function FolderTabs(props) {
@@ -54,6 +61,7 @@ export function FolderTabs(props) {
 
 	return (
 		<ul className="folder-tabs">
+			{folders[0].is_root ? null : <li><a href={props.parentUrl}><UpIcon /></a></li>}
 			{folders.map(folder =>
 				<FolderTab
 					key={folder.id}

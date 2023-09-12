@@ -359,7 +359,6 @@ export default function FilerAdmin(props) {
 	return (<>
 		<MenuBar
 			clipboard={clipboard}
-			parentUrl={settings.parent_url}
 			addFolder={addFolder}
 			openUploader={() => uploaderRef.current.openUploader()}
 			setLayout={switchLayout}
@@ -379,7 +378,7 @@ export default function FilerAdmin(props) {
 			sensors={sensors}
 			collisionDetection={pointerWithin}
 		>
-			<FolderTabs activeFolderId={settings.id} folders={favoriteFolders} togglePin={togglePin} />
+			<FolderTabs activeFolderId={settings.id} folders={favoriteFolders} togglePin={togglePin} parentUrl={settings.parent_url} />
 			{renderWorkArea()}
 			{settings.is_trash ? null : renderDroppables()}
 			<div ref={overlayRef}>
