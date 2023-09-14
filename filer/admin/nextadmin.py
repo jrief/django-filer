@@ -21,6 +21,8 @@ from filer.models.nextmodels import InodeModel, NextFolder, NextFile, PinnedFold
 
 
 class InodeAdmin(admin.ModelAdmin):
+    extra_data_fields = ['owner_name', 'is_folder', 'parent']
+
     def get_fallback_folder(self, request):
         try:
             last_folder_id = request.session['filer_last_folder_id']
@@ -75,19 +77,18 @@ class InodeAdmin(admin.ModelAdmin):
         Return a serialized list of file/folder-s for the given folder.
         """
         inodes = []
-        extra_data_fields = ['owner_name', 'is_folder', 'thumbnail_url', 'parent']
         for inode_model in InodeModel.all_models:
             queryset = inode_model.objects.select_related('owner') \
                 .filter(parent=folder) \
                 .annotate(owner_name=F('owner__username')) \
-                .annotate(is_folder=Value(inode_model.is_folder, output_field=BooleanField())) \
-                .annotate(thumbnail_url=Value(NextFolder.thumbnail_url) if inode_model.is_folder else F('thumbnail'))
-            data_fields = inode_model.data_fields + extra_data_fields
+                .annotate(is_folder=Value(inode_model.is_folder, output_field=BooleanField()))
+            data_fields = inode_model.data_fields + self.extra_data_fields
             inodes.extend(values | computed for values, computed in zip(
                 queryset.values(*data_fields),
                 ({
-                    'summary': inode_model.summarize(obj),
                     'url': reverse('admin:filer_nextfolder_change', args=(obj.id,)),
+                    'thumbnail_url': obj.get_thumbnail_url(),
+                    'summary': obj.summary,
                 } for obj in queryset))
             )
         return inodes
@@ -103,6 +104,17 @@ class InodeAdmin(admin.ModelAdmin):
                 break  # not required for layout in ['tiles', 'list']
             folder = folder.parent
         return ancestors
+
+    def get_breadcrumbs(self, request, folder):
+        breadcrumbs = []
+        while folder:
+            breadcrumbs.append({
+                'link': reverse('admin:filer_nextfolder_change', args=(folder.id,)),
+                'name': folder.name,
+            })
+            folder = folder.parent
+        breadcrumbs.reverse()
+        return breadcrumbs
 
 
 @admin.register(NextFolder)
@@ -199,44 +211,40 @@ class FolderAdmin(InodeAdmin):
     def render_change_form(self, request, context, add=False, change=False, form_url='', obj=None):
         trash_folder = NextFolder.objects.get_trash_folder(owner=request.user)
         favorite_folders = self.get_favorite_folders(request, obj)
-        if trash_folder.id != obj.id:
-            upload_files_uuid = uuid.UUID(32 * '0')
-            context.update(folder_settings=dict(
+        context.update(
+            breadcrumbs=self.get_breadcrumbs(request, obj),
+            folder_settings=dict(
                 id=obj.id,
                 name=obj.name,
+                ancestors=self.get_ancestors(request, obj),
+                move_inodes_url=reverse('admin:filer_move_inodes', args=(obj.id,)),
+                refresh_url=reverse('admin:filer_fetch_ancestors', args=(obj.id,)),
+                toggle_pin_url=reverse('admin:filer_toggle_pin', args=(obj.id,)),
+                favorite_folders=favorite_folders,
+                legends=self._legends,
+                csrf_token=get_token(request),
+            )
+        )
+        if trash_folder.id != obj.id:
+            upload_files_uuid = uuid.UUID(32 * '0')
+            context['folder_settings'].update(
                 is_root=obj.is_root,
                 is_trash=False,
-                ancestors=self.get_ancestors(request, obj),
-                refresh_url=reverse('admin:filer_fetch_ancestors', args=(obj.id,)),
                 upload_files_url=reverse('admin:filer_upload_files', args=(upload_files_uuid,)),
                 update_inode_url=reverse('admin:filer_update_inode', args=(obj.id,)),
                 copy_inodes_url=reverse('admin:filer_copy_inodes', args=(obj.id,)),
-                move_inodes_url=reverse('admin:filer_move_inodes', args=(obj.id,)),
                 delete_inodes_url=reverse('admin:filer_delete_inodes', args=(obj.id,)),
-                erase_trash_folder_url=reverse('admin:filer_erase_trash_folder'),
-                toggle_pin_url=reverse('admin:filer_toggle_pin', args=(obj.id,)),
                 add_folder_url=reverse('admin:filer_add_folder', args=(obj.id,)),
                 parent_url=reverse('admin:filer_nextfolder_change', args=(obj.parent_id,)) if obj.parent_id else None,
-                favorite_folders=favorite_folders,
-                legends=self._legends,
-                csrf_token=get_token(request),
-            ))
+            )
             if not obj.is_root and not next(filter(lambda f: f['id'] == obj.id and f.get('is_pinned'), favorite_folders), None):
                 request.session['filer_last_folder_id'] = str(obj.id)
         else:
-            context.update(folder_settings=dict(
-                id=obj.id,
-                name=obj.name,
+            context['folder_settings'].update(
                 is_root=False,
                 is_trash=True,
-                ancestors=self.get_ancestors(request, obj),
-                move_inodes_url=reverse('admin:filer_move_inodes', args=(obj.id,)),
                 erase_trash_folder_url=reverse('admin:filer_erase_trash_folder'),
-                toggle_pin_url=reverse('admin:filer_toggle_pin', args=(obj.id,)),
-                favorite_folders=favorite_folders,
-                legends=self._legends,
-                csrf_token=get_token(request),
-            ))
+            )
         return TemplateResponse(
             request,
             self.folder_template,
@@ -316,10 +324,16 @@ class FolderAdmin(InodeAdmin):
                 update_fields.append(field)
         if update_fields:
             obj.save(update_fields=update_fields)
-        return JsonResponse({
-            'inodes': self.get_inodes(current_folder),
-            'favorite_folders': self.get_favorite_folders(request, current_folder),
-        })
+        new_inode = {
+            'owner_name': obj.owner.username,
+            'is_folder': obj.is_folder,
+            'parent': obj.parent_id,
+            'url': reverse('admin:filer_nextfolder_change', args=(obj.id,)),
+            'thumbnail_url': obj.get_thumbnail_url(),
+        }
+        for field in obj.data_fields:
+            new_inode[field] = getattr(obj, field)
+        return JsonResponse({'new_inode': new_inode})
 
     def copy_inodes(self, request, folder_id):
         if response := self.check_for_valid_post_request(request, folder_id):
@@ -436,7 +450,7 @@ class FolderAdmin(InodeAdmin):
 
 @admin.register(NextFile)
 class FileAdmin(InodeAdmin):
-    fields = ['file', 'name', 'original_filename']
+    fields = ['name', 'file_name']
 
     def get_model_perms(self, *args, **kwargs):
         """Prevent showing up in the admin index."""

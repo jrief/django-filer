@@ -22,7 +22,12 @@ export function InodeList(props) {
 					'X-CSRFToken': settings.csrf_token,
 				},
 				body: JSON.stringify(newInode),
-			}).then(props.handleResponse);
+			}).then(async response => {
+				if (response.ok) {
+					const body = await response.json();
+					setInodes(folderId, inodes.map(inode => inode.id === body['new_inode'].id ? body['new_inode'] : inode));
+				}
+			});
 		}
 		if (inodes.findIndex(inode => inode.id === newInode.id && inode.name !== newInode.name) !== -1) {
 			setInodes(folderId, inodes.map(inode => inode.id === newInode.id ? {...newInode, dirty: true} : inode));

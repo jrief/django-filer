@@ -43,22 +43,19 @@ function ProgressBar(props) {
 		};
 	}, [file]);
 
-	function transferStart(xxx) {
-		console.log('transferStart');
-		console.log(file);
+	function transferStart() {
+		setComplete(0);
 	}
 
 	function transferProgress(event: ProgressEvent) {
 		if (event.lengthComputable) {
-			setComplete(event.loaded / event.total);
+			setComplete(event.loaded / event.total * 0.98);
 		}
 	}
 
 	function transferComplete(event: ProgressEvent) {
-		console.log('transferComplete');
-		console.log(file);
 		if (event.lengthComputable) {
-			setComplete(event.loaded / event.total);
+			setComplete(1);
 		}
 		const request = event.target as XMLHttpRequest;
 		if (request.status === 200) {
@@ -70,7 +67,7 @@ function ProgressBar(props) {
 
 	return (
 		<li>
-			{file.name}
+			<span>{file.name}:</span>
 			<progress value={complete} max="1"></progress>
 		</li>
 	);
@@ -86,7 +83,6 @@ export const FileUploader = forwardRef((props: any, ref) => {
 	useImperativeHandle(ref, () => ({
 		openUploader() {
 			inputRef.current.click()
-			console.log(ref);
 		}
 	}));
 
@@ -96,13 +92,11 @@ export const FileUploader = forwardRef((props: any, ref) => {
 	}
 
 	function handleDragEnter(event) {
-		console.log('handleDragEnter');
 		swallowEvent(event);
 		setDragging(true);
 	}
 
 	function handleDragLeave(event) {
-		console.log('handleDragLeave');
 		swallowEvent(event);
 		const {relatedTarget} = event;
 		if (!relatedTarget || !event.currentTarget.contains(relatedTarget)) {
@@ -119,8 +113,6 @@ export const FileUploader = forwardRef((props: any, ref) => {
 	}
 
 	function handleFileSelect(event) {
-		console.log('handleFileSelect');
-		console.log(event);
 		uploadFiles(event.target.files);
 	}
 
@@ -130,9 +122,7 @@ export const FileUploader = forwardRef((props: any, ref) => {
 			promises.push(uploadFile(files.item(k)));
 		}
 		setUploading([...uploading, ...files]);
-		Promise.all(promises).then(() => {
-			console.log('uploaded all files');
-		}).catch((error) => {
+		Promise.all(promises).catch((error) => {
 			alert(error);
 		}).finally( () => {
 			setUploading([]);

@@ -41,6 +41,19 @@ export default function FilerAdmin(props) {
 		height: 'fit-content',
 		width: 'fit-content',
 	};
+	window.addEventListener('keydown', event => {
+		if (event.key === 'Escape') {
+			deselectAll(event);
+		} else if (event.key === 'c' && (event.ctrlKey || event.metaKey || event.altKey)) {
+			copyInodes();
+		} else if (event.key === 'x' && (event.ctrlKey || event.metaKey || event.altKey)) {
+			cutInodes();
+		} else if (event.key === 'v' && (event.ctrlKey || event.metaKey || event.altKey)) {
+			pasteInodes();
+		} else if (event.key === 'Delete') {
+			deleteInodes();
+		}
+	});
 
 	function initializeAncestors() {
 		return settings.ancestors.map(ancestor => ({
@@ -54,10 +67,6 @@ export default function FilerAdmin(props) {
 
 	function clearClipboard() {
 		setClipboard([]);
-		// setAncestors(ancestors.map(ancestor => ({
-		// 	folder: ancestor.folder,
-		// 	inodes: ancestor.inodes.map(inode => ({...inode, cutted: false, copied: false})),
-		// })));
 	}
 
 	function modifyMovement(args) {
@@ -241,8 +250,6 @@ export default function FilerAdmin(props) {
 	function handleDragStart(event) {
 		const {active} = event;
 		const folderId = active.data.current.folderId;
-		console.log("drag start");
-		console.log(event);
 		const inodes = ancestors.find(ancestor => ancestor.folder === folderId).inodes;
 		const multiSelected = inodes.some(inode => inode.selected && inode.id === active.id);
 		const draggedInodes= multiSelected
@@ -251,7 +258,6 @@ export default function FilerAdmin(props) {
 		const firstDraggedIndex = draggedInodes.findIndex(inode => inode.dragged);
 		setDraggedIds(firstDraggedIndex !== -1 ? [draggedInodes[firstDraggedIndex].id, active.id] : null);
 		setInodes(folderId, draggedInodes);
-		console.log(draggedInodes.filter(inode => inode.dragged));
 	}
 
 	function handleDragEnd(event) {
@@ -270,6 +276,7 @@ export default function FilerAdmin(props) {
 				downloadFiles(draggedInodes);
 				setTimeout(() => {
 					overlayRef.current.hidden = false;
+					clearClipboard();
 				}, 1000);
 				return;
 			}
@@ -305,19 +312,19 @@ export default function FilerAdmin(props) {
 		return getCurrentInodes().filter(inode => inode.selected).length;
 	}
 
-	const kwargs = {deselectAll, handleResponse, setInodes, currentFolderId, settings, clearClipboard};
+	const attributes = {deselectAll, handleResponse, setInodes, currentFolderId, settings, clearClipboard};
 
 	function renderWorkArea() {
 		if (settings.is_trash) return (
-			<div className="work-area tiles">
-				<SelectableArea {...kwargs} folderId={ancestors[0].folder} inodes={ancestors[0].inodes} layout="tiles" />
+			<div className={`work-area ${layout}`}>
+				<SelectableArea {...attributes} folderId={ancestors[0].folder} inodes={ancestors[0].inodes} layout={layout} />
 			</div>
 		);
 
 		if (layout !== 'columns') return (
 			<div className={`work-area ${layout}`}>
 				<FileUploader ref={uploaderRef} folderId={primaryFolderId} settings={settings} handleResponse={handleResponse}>
-					<SelectableArea {...kwargs} folderId={primaryFolderId} inodes={ancestors[0].inodes} layout={layout} />
+					<SelectableArea {...attributes} folderId={primaryFolderId} inodes={ancestors[0].inodes} layout={layout} />
 				</FileUploader>
 			</div>
 		);
@@ -334,7 +341,7 @@ export default function FilerAdmin(props) {
 						settings={settings}
 						handleResponse={handleResponse}
 					>
-						<SelectableArea {...kwargs} folderId={ancestor.folder} inodes={ancestor.inodes} layout={layout} previousFolder={previousFolder} />
+						<SelectableArea {...attributes} folderId={ancestor.folder} inodes={ancestor.inodes} layout={layout} previousFolder={previousFolder} />
 					</FileUploader>
 					);
 					previousFolder = ancestor.folder;

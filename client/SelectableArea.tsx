@@ -85,13 +85,11 @@ export function SelectableArea(props) {
 				width: 1,
 				height: 1,
 			}
-			console.log(rectangle);
 			setActiveRect(rectangle);
 			setClickHandler(window.setTimeout(() => {
 				selectionDiscard();
 				props.deselectAll();
 				setClickHandler(null);
-				console.log('selection discarded');
 			}, 250));
 		} else {
 			selectionDiscard();
@@ -134,11 +132,9 @@ export function SelectableArea(props) {
 		const areaRect = areaRef.current.getBoundingClientRect();
 		activeRect.left += areaRect.x;
 		activeRect.top += areaRect.y;
-		console.log(activeRect);
 		const elements = areaRef.current.querySelectorAll('.inode-list > li');
 		for (let element of elements) {
 			const elemRect = element.getBoundingClientRect();
-			console.log(elemRect);
 			if (overlaps(elemRect)) {
 				setTimeout(() => {
 					const event = new CustomEvent('click', {

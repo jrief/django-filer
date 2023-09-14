@@ -17,7 +17,6 @@ function FolderTab(props) {
 	});
 
 	function togglePin(event) {
-		console.log(this);
 		props.togglePin(this.id);
 		event.stopPropagation();
 		event.preventDefault();

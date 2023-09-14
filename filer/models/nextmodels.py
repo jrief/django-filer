@@ -1,8 +1,6 @@
 import hashlib
 import mimetypes
-import os
 import uuid
-from datetime import datetime
 from itertools import chain
 from pathlib import Path
 
@@ -12,13 +10,11 @@ from django.core.exceptions import ImproperlyConfigured, ValidationError
 from django.core.files.base import ContentFile, File
 from django.core.files.storage import default_storage
 from django.db import models
-from django.urls import NoReverseMatch, reverse
-from django.utils import timezone
+from django.template.defaultfilters import filesizeformat
 from django.utils.functional import cached_property
-from django.utils.translation import gettext_lazy as _
+from django.utils.translation import gettext, gettext_lazy as _
 
 from filer import settings as filer_settings
-from filer.models.fields import ThumbnailField
 
 
 class InodeMetaModel(models.base.ModelBase):
@@ -112,19 +108,16 @@ class InodeModel(models.Model, metaclass=InodeMetaModel):
         auto_now=True,
         editable=False,
     )
+    meta_data = models.JSONField(
+        default=dict,
+        blank=True,
+    )
 
     class Meta:
         abstract = True
 
     def __str__(self):
         return self.name
-
-    @classmethod
-    def summarize(cls, data):
-        """
-        Hook to return the summary for a given file.
-        """
-        return "Foo Bar"
 
 
 class FolderModelManager(InodeManager):
@@ -140,13 +133,6 @@ class FolderModelManager(InodeManager):
 
 class NextFolder(InodeModel):
     is_folder = True
-    thumbnail_url = staticfiles_storage.url('filer/icons/folder.svg')
-
-    description = models.TextField(
-        null=True,
-        blank=True,
-        verbose_name=_("Description"),
-    )
 
     class Meta:
         app_label = 'filer'
@@ -173,8 +159,12 @@ class NextFolder(InodeModel):
     def is_trash(self):
         return self.parent is None and self.name == '__trash__'
 
-    def summarize(self):
-        return "({}, {})".format(self.num_children, _("items"))
+    @cached_property
+    def summary(self):
+        return "({}, {})".format(self.num_children, gettext("items"))
+
+    def get_thumbnail_url(self):
+        return staticfiles_storage.url('filer/icons/folder.svg')
 
     def get_children(self, lookup=None):
         lookup = dict(lookup or {}, parent=self)
@@ -206,24 +196,20 @@ class FileModelManager(InodeManager):
         kwargs.update(
             parent=folder,
             name=uploaded_file.name,
+            file_name=default_storage.generate_filename(uploaded_file.name),
             mime_type=kwargs.pop('mime_type', uploaded_file.content_type),
             file_size=uploaded_file.size,
         )
         obj = self.model(**kwargs)
-        id = str(obj.id)
-        filer_public = Path(settings.MEDIA_ROOT) / filer_settings.FILER_STORAGES['public']['main']['UPLOAD_TO_PREFIX']
-        upload_dir = filer_public / f'{id[0:2]}/{id[2:4]}/{id}'
-        upload_dir.mkdir(parents=True, exist_ok=True)
-        file_path = upload_dir / uploaded_file.name
+        (default_storage.base_location / obj.folder_path).mkdir(parents=True, exist_ok=True)
         sha1 = hashlib.sha1()
-        with default_storage.open(file_path, 'wb+') as destination:
+        with default_storage.open(obj.file_path, 'wb+') as destination:
             for chunk in uploaded_file.chunks():
                 sha1.update(chunk)
                 destination.write(chunk)
-        if default_storage.size(file_path) != obj.file_size:
+        if default_storage.size(obj.file_path) != obj.file_size:
             raise IOError("File size mismatch between uploaded file and destination file")
         obj.sha1 = sha1.hexdigest()
-        obj.file = Path(file_path).relative_to(default_storage.location)
         obj._for_write = True
         obj.save(force_insert=True)
         folder.refresh_from_db()
@@ -245,20 +231,15 @@ class FileModelManager(InodeManager):
 
 class AbstractFileModel(InodeModel):
     accept_mime_types = ['*/*']
-    data_fields = InodeModel.data_fields + ['file', 'file_size', 'sha1', 'mime_type', 'original_filename']
+    data_fields = InodeModel.data_fields + ['file_size', 'file_name', 'sha1', 'mime_type']
+    filer_public = Path(filer_settings.FILER_STORAGES['public']['main']['UPLOAD_TO_PREFIX'])
 
-    file = models.FilePathField(
-        _("File"),
-        path=str(settings.MEDIA_ROOT / 'filer_public'),
-        null=True,
-        blank=True,
-        recursive=True,
+    file_name = models.CharField(
+        _("File name"),
         max_length=255,
     )
     file_size = models.BigIntegerField(
         _("Size"),
-        null=True,
-        blank=True,
     )
     sha1 = models.CharField(
         _("sha1"),
@@ -271,17 +252,6 @@ class AbstractFileModel(InodeModel):
         help_text="MIME type of uploaded content",
         validators=[mimetype_validator],
         default='application/octet-stream',
-    )
-    original_filename = models.CharField(
-        _("Original filename"),
-        max_length=255,
-        blank=True,
-        null=True,
-    )
-    thumbnail = ThumbnailField()
-    meta_data = models.JSONField(
-        default=dict,
-        blank=True,
     )
 
     class Meta:
@@ -297,8 +267,20 @@ class AbstractFileModel(InodeModel):
     def folder(self):
         return self.parent
 
-    @classmethod
-    def get_thumbnail_url(cls, file_path=None):
+    @cached_property
+    def folder_path(self):
+        id = str(self.id)
+        return self.filer_public / f'{id[0:2]}/{id[2:4]}/{id}'
+
+    @property
+    def file_path(self):
+        return self.folder_path / self.file_name
+
+    @cached_property
+    def summary(self):
+        return filesizeformat(self.file_size)
+
+    def get_thumbnail_url(self):
         """
         Hook to return the thumbnail url for a given file.
         """
@@ -314,9 +296,9 @@ class AbstractFileModel(InodeModel):
 
     def copy_to(self, folder, **kwargs):
         """
-        Copies the file to a destination folder and returns it.
+        Copy the file to a destination folder and returns it.
         """
-        source = Path(default_storage.path(self.file))
+        model = self._meta.model
         kwargs.setdefault('name', self.name)
         kwargs.setdefault('owner', self.owner)
         kwargs.update(
@@ -324,17 +306,13 @@ class AbstractFileModel(InodeModel):
             file_size=self.file_size,
             sha1=self.sha1,
             mime_type=self.mime_type,
-            original_filename=self.original_filename,
+            file_name=self.file_name,
+            meta_data=self.meta_data,
         )
-        obj = self._meta.model(**kwargs)
-        id = str(obj.id)
-        filer_public = Path(settings.MEDIA_ROOT) / filer_settings.FILER_STORAGES['public']['main']['UPLOAD_TO_PREFIX']
-        upload_dir = filer_public / f'{id[0:2]}/{id[2:4]}/{id}'
-        upload_dir.mkdir(parents=True, exist_ok=True)
-        file_path = upload_dir / self.name
-        obj.file = Path(file_path).relative_to(default_storage.location)
-        with default_storage.open(source, 'rb') as readhandle:
-            default_storage.save(obj.file, readhandle)
+        obj = model(**kwargs)
+        (default_storage.base_location / obj.folder_path).mkdir(parents=True, exist_ok=True)
+        with default_storage.open(self.file_path, 'rb') as readhandle:
+            default_storage.save(obj.file_path, readhandle)
         obj._for_write = True
         obj.save(force_insert=True)
         folder.refresh_from_db()
@@ -493,97 +471,6 @@ class NextFile(AbstractFileModel):
             return self.folder.has_generic_permission(request, permission_type)
         else:
             return False
-
-    def get_admin_change_url(self):
-        return reverse(
-            'admin:{0}_{1}_change'.format(
-                self._meta.app_label,
-                self._meta.model_name,
-            ),
-            args=(self.pk,)
-        )
-
-    def get_admin_delete_url(self):
-        return reverse(
-            'admin:{0}_{1}_delete'.format(self._meta.app_label, self._meta.model_name),
-            args=(self.pk,))
-
-    @property
-    def url(self):
-        """
-        to make the model behave like a file field
-        """
-        try:
-            r = self.file.url
-        except:  # noqa
-            r = ''
-        return r
-
-    @property
-    def canonical_time(self):
-        if settings.USE_TZ:
-            return int((self.uploaded_at - datetime(1970, 1, 1, 1, tzinfo=timezone.utc)).total_seconds())
-        else:
-            return int((self.uploaded_at - datetime(1970, 1, 1, 1)).total_seconds())
-
-    @property
-    def canonical_url(self):
-        url = ''
-        if self.file and self.is_public:
-            try:
-                url = reverse('canonical', kwargs={
-                    'uploaded_at': self.canonical_time,
-                    'file_id': self.id
-                })
-            except NoReverseMatch:
-                pass  # No canonical url, return empty string
-        return url
-
-    @property
-    def path(self):
-        try:
-            return self.file.path
-        except:  # noqa
-            return ''
-
-    @property
-    def size(self):
-        return self._file_size or 0
-
-    @property
-    def extension(self):
-        filetype = os.path.splitext(self.file.name)[1].lower()
-        if len(filetype) > 0:
-            filetype = filetype[1:]
-        return filetype
-
-    @property
-    def logical_folder(self):
-        """
-        if this file is not in a specific folder return the Special "unfiled"
-        Folder object
-        """
-        if not self.folder:
-            from .virtualitems import UnsortedImages
-            return UnsortedImages()
-        else:
-            return self.folder
-
-    @property
-    def logical_path(self):
-        """
-        Gets logical path of the folder in the tree structure.
-        Used to generate breadcrumbs
-        """
-        folder_path = []
-        if self.folder:
-            folder_path.extend(self.folder.get_ancestors())
-        folder_path.append(self.logical_folder)
-        return folder_path
-
-    @property
-    def duplicates(self):
-        return File.objects.find_duplicates(self)
 
 
 class PinnedFolder(models.Model):

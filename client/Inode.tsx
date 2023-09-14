@@ -32,10 +32,8 @@ export function Inode(props) {
 	}
 
 	function activateInode(event) {
-		console.log(event);
 		if (event.detail === 1) {
 			setClickHandler(window.setTimeout(() => {
-				console.log(event.detail);
 				props.selectInode.bind(props)(event);
 				setClickHandler(null);
 			}, 250));
@@ -46,7 +44,6 @@ export function Inode(props) {
 			}
 			props.selectInode.bind(props)(event);
 		} else if (event.detail.selected) {
-			console.log(event.detail);
 			props.selectInode.bind(props)(event);
 		}
 		event.stopPropagation();
@@ -95,7 +92,6 @@ export function ListItem(props) {
 		if (event.target.value !== props.name) {
 			props.changeInode({...props, name: event.target.value});
 		} else if (event.type === 'blur') {
-			console.log(props);
 			props.changeInode(props, true);
 		}
 	}
@@ -130,7 +126,7 @@ export function ListItem(props) {
 					{props.owner_name}
 				</div>
 				<div>
-					{props.details}
+					{props.summary}
 				</div>
 				<div>{props.created_at}</div>
 				<div>{props.mime_type}</div>

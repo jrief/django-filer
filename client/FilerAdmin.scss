@@ -179,13 +179,28 @@ $trash-background: repeating-linear-gradient(45deg, transparent, transparent 10p
 				.progress-indicator {
 					width: calc(100% - 100px);
 					max-width: 500px;
-					background-color: #a6dce8;
-					border: 2px double black;
+					background-color: rgba(50, 150, 250, 0.5);
+					border: 3px solid rgb(50, 150, 250);
 					padding: 20px;
 
 					p {
 						font-weight: bold;
 						font-size: 20px;
+					}
+
+					.progress-bar {
+						padding: 0;
+
+						li {
+							display: flex;
+							justify-content: space-between;
+							span {
+								text-overflow: ellipsis;
+							}
+							progress {
+								width: 50%;
+							}
+						}
 					}
 				}
 			}
@@ -255,6 +270,10 @@ $trash-background: repeating-linear-gradient(45deg, transparent, transparent 10p
 					box-sizing: border-box;
 					font-size: inherit;
 					list-style: inherit;
+
+					&:focus-visible {
+						background-color: white;
+					}
 				}
 			}
 
@@ -274,8 +293,8 @@ $trash-background: repeating-linear-gradient(45deg, transparent, transparent 10p
 		justify-content: flex-start;
 
 		li {
-			min-height: 180px;
-			width: 150px;
+			min-height: 210px;
+			width: 160px;
 
 			.inode {
 				padding: 5px;
@@ -291,6 +310,11 @@ $trash-background: repeating-linear-gradient(45deg, transparent, transparent 10p
 
 					img {
 						width: 100%;
+						border-radius: 5px;
+
+						&:not([src$=".svg"]) {
+							box-shadow: grey 0 0 5px;
+						}
 
 						&[src$=".svg"] {
 							scale: 75%;
@@ -298,6 +322,7 @@ $trash-background: repeating-linear-gradient(45deg, transparent, transparent 10p
 					}
 
 					figcaption {
+						margin-top: 5px;
 						text-align: center;
 						width: 100%;
 						word-break: break-all;
@@ -339,8 +364,10 @@ $trash-background: repeating-linear-gradient(45deg, transparent, transparent 10p
 
 				div {
 					padding: 5px 10px;
+					overflow: hidden;
 
 					&:has(> img) {
+						width: 65px;
 						padding-left: 20px;
 
 						img {
@@ -380,13 +407,21 @@ $trash-background: repeating-linear-gradient(45deg, transparent, transparent 10p
 					grid-template-columns: 75px 1fr;
 					align-items: center;
 					position: relative;
+					box-sizing: border-box;
 
-					&.parent::after {
-						position: absolute;
-						right: 10px;
-						content: "➧";
-						color: grey;
-						font-size: 36px;
+					&.parent {
+						border-top: 2px solid grey;
+						border-left: 2px solid grey;
+						border-bottom: 2px solid grey;
+						border-top-left-radius: 5px;
+						border-bottom-left-radius: 5px;
+						&::after {
+							position: absolute;
+							right: 10px;
+							content: "➧";
+							color: grey;
+							font-size: 36px;
+						}
 					}
 
 					div {
