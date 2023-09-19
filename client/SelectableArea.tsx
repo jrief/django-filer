@@ -33,7 +33,7 @@ export function SelectableArea(props) {
 			// double click
 			if (!settings.is_trash) {
 				// prevent editing files in trash folder
-				window.location.assign(this.url);
+				window.location.assign(this.change_url);
 			}
 			return;
 		} else if ((event.detail as any)?.selected) {

@@ -61,15 +61,24 @@ class InodeManager(models.Manager):
     def get_queryset(self):
         return super().get_queryset().select_related('parent')
 
-    def filter_inodes(self, lookup=None):
-        lookup = lookup or {}
+    def filter_inodes(self, **lookup):
         inodes = [inode_model.objects.filter(**lookup) for inode_model in InodeModel.all_models]
         return chain(*inodes)
+
+    def get_inode(self, **lookup):
+        querychain = self.filter_inodes(**lookup)
+        try:
+            inode = next(querychain)
+        except StopIteration:
+            raise self.model.DoesNotExist
+        if next(querychain, None):
+            raise self.model.MultipleObjectsReturned
+        return inode
 
 
 class InodeModel(models.Model, metaclass=InodeMetaModel):
     is_folder = False
-    data_fields = ['id', 'name', 'created_at', 'last_modified_at']
+    data_fields = ['id', 'name', 'parent', 'created_at', 'last_modified_at']
 
     id = models.UUIDField(
         primary_key=True,
@@ -97,6 +106,7 @@ class InodeModel(models.Model, metaclass=InodeMetaModel):
     name = models.CharField(
         max_length=255,
         verbose_name=_("Name"),
+        db_index=True,
     )
     created_at = models.DateTimeField(
         _("Created at"),
@@ -139,6 +149,7 @@ class NextFolder(InodeModel):
         verbose_name = _("Folder")
         verbose_name_plural = _("(Next) Folders")
         default_permissions = ['read', 'write']
+        unique_together = [('parent', 'name')]
 
     objects = FolderModelManager()
 
@@ -163,13 +174,15 @@ class NextFolder(InodeModel):
     def summary(self):
         return "({}, {})".format(self.num_children, gettext("items"))
 
+    def get_download_url(self):
+        return None
+
     def get_thumbnail_url(self):
         return staticfiles_storage.url('filer/icons/folder.svg')
 
-    def get_children(self, lookup=None):
-        lookup = dict(lookup or {}, parent=self)
-        children = [inode_model.objects.filter(**lookup) for inode_model in InodeModel.all_models]
-        return chain(*children)
+    def listdir(self, **lookup):
+        inodes = (inode_model.objects.filter(parent=self, **lookup) for inode_model in InodeModel.all_models)
+        return chain(*inodes)
 
     def copy_to(self, folder, **kwargs):
         """
@@ -179,8 +192,8 @@ class NextFolder(InodeModel):
         kwargs.setdefault('owner', self.owner)
         kwargs.update(parent=folder)
         obj = self._meta.model.objects.create(**kwargs)
-        for child in self.get_children():
-            child.copy_to(obj, owner=obj.owner)
+        for inode in self.listdir():
+            inode.copy_to(obj, owner=obj.owner)
         return obj
 
 
@@ -196,7 +209,7 @@ class FileModelManager(InodeManager):
         kwargs.update(
             parent=folder,
             name=uploaded_file.name,
-            file_name=default_storage.generate_filename(uploaded_file.name),
+            file_name=self.model.generate_filename(uploaded_file.name),
             mime_type=kwargs.pop('mime_type', uploaded_file.content_type),
             file_size=uploaded_file.size,
         )
@@ -280,6 +293,16 @@ class AbstractFileModel(InodeModel):
     def summary(self):
         return filesizeformat(self.file_size)
 
+    @classmethod
+    def generate_filename(cls, filename):
+        return default_storage.generate_filename(filename).lower()
+
+    def get_download_url(self):
+        """
+        Hook to return the download url for a given file.
+        """
+        return default_storage.url(self.file_path)
+
     def get_thumbnail_url(self):
         """
         Hook to return the thumbnail url for a given file.
@@ -293,6 +316,9 @@ class AbstractFileModel(InodeModel):
     @cached_property
     def mime_subtype(self):
         return self.mime_type.split('/')[1]
+
+    def open(self, mode='rb'):
+        return default_storage.open(self.file_path, mode)
 
     def copy_to(self, folder, **kwargs):
         """
@@ -319,16 +345,10 @@ class AbstractFileModel(InodeModel):
         return obj
 
     def delete(self, using=None, keep_parents=False):
-        if not self._meta.abstract and default_storage.exists(self.file):
-            default_storage.delete(self.file)
+        if not self._meta.abstract and default_storage.exists(self.file_path):
+            default_storage.delete(self.file_path)
         super().delete(using, keep_parents)
 
-    def get_file_handle(self):
-        return default_storage.open(self.file)
-
-    def validate_name(self):
-        if not self.name:
-            self.name = self.original_filename
 
 
 class NextFile(AbstractFileModel):

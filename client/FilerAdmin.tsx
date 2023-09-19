@@ -112,11 +112,11 @@ export default function FilerAdmin(props) {
 		setCurrentFolder(primaryFolderId);
 	}
 
-	async function addFolder() {
+	function addFolder() {
 		const folderName = window.prompt("Enter folder name");
 		if (!folderName)
 			return;
-		const response = await fetch(settings.add_folder_url, {
+		fetch(settings.add_folder_url, {
 			method: 'POST',
 			headers: {
 				'Content-Type': 'application/json',
@@ -125,14 +125,15 @@ export default function FilerAdmin(props) {
 			body: JSON.stringify({
 				name: folderName,
 			}),
+		}).then(async response => {
+			const inodes = getCurrentInodes();
+			if (response.status === 200) {
+				const body = await response.json();
+				setInodes(primaryFolderId, [...inodes, body.new_folder]);
+			} else {
+				console.error(response);
+			}
 		});
-		const inodes = ancestors.find(ancestor => ancestor.folder === primaryFolderId).inodes;
-		if (response.status === 200) {
-			const data = await response.json();
-			setInodes(primaryFolderId, [...inodes, data.new_folder]);
-		} else {
-			console.error(response);
-		}
 	}
 
 	function copyInodes() {
@@ -228,12 +229,16 @@ export default function FilerAdmin(props) {
 		}
 	}
 
-	function downloadFiles(draggedInodes) {
-		draggedInodes.forEach(inode => {
-			downloadLinkRef.current.href = inode.url;
+	function downloadFiles(inodes) {
+		inodes.forEach(inode => {
+			downloadLinkRef.current.href = inode.download_url;
 			downloadLinkRef.current.download = inode.name;
 			downloadLinkRef.current.click();
 		});
+	}
+
+	function downloadSelected() {
+		downloadFiles(getCurrentInodes().filter(inode => !inode.is_folder && inode.selected));
 	}
 
 	function handleResponse(response: Response) {
@@ -312,6 +317,10 @@ export default function FilerAdmin(props) {
 		return getCurrentInodes().filter(inode => inode.selected).length;
 	}
 
+	function getNumSelectedFiles() {
+		return getCurrentInodes().filter(inode => !inode.is_folder && inode.selected).length;
+	}
+
 	const attributes = {deselectAll, handleResponse, setInodes, currentFolderId, settings, clearClipboard};
 
 	function renderWorkArea() {
@@ -368,6 +377,7 @@ export default function FilerAdmin(props) {
 			clipboard={clipboard}
 			addFolder={addFolder}
 			openUploader={() => uploaderRef.current.openUploader()}
+			downloadSelected={downloadSelected}
 			setLayout={switchLayout}
 			copyInodes={copyInodes}
 			cutInodes={cutInodes}
@@ -377,6 +387,7 @@ export default function FilerAdmin(props) {
 			isRoot={settings.is_root}
 			isTrash={settings.is_trash}
 			numSelected={getNumSelected()}
+			numSelectedFiles={getNumSelectedFiles()}
 		/>
 		<DndContext
 			onDragStart={handleDragStart}

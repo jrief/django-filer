@@ -1,10 +1,10 @@
 import {useDroppable} from '@dnd-kit/core';
 import React from 'react';
+import CloseIcon from './icons/close.svg';
 import PinIcon from './icons/pin.svg';
-import UnpinIcon from './icons/unpin.svg';
 import RecycleIcon from './icons/recycle.svg';
 import RootIcon from './icons/root.svg';
-import UpIcon from './icons/up.svg';
+import UpIcon from './icons/folder-up.svg';
 
 
 function FolderTab(props) {
@@ -15,6 +15,7 @@ function FolderTab(props) {
 	} = useDroppable({
 		id: `tab:${folder.id}`,
 	});
+	const isActive = folder.id === activeFolderId;
 
 	function togglePin(event) {
 		props.togglePin(this.id);
@@ -24,7 +25,7 @@ function FolderTab(props) {
 
 	function cssClasses(folder) {
 		const classes = [];
-		if (folder.id === activeFolderId) {
+		if (isActive) {
 			classes.push('active');
 		}
 		if (folder.is_trash) {
@@ -36,27 +37,28 @@ function FolderTab(props) {
 		return classes.join(' ');
 	}
 
-	function renderFolder(folder) {
-		return (<>
-			{folder.name}
-			<span onClick={togglePin.bind(folder)}>{folder.is_pinned ? <UnpinIcon /> : <PinIcon/>}</span>
-		</>);
-	}
+	if (folder.is_root) return (
+		<li ref={setNodeRef} className={cssClasses(folder)} onClick={() => !isActive ? window.location.assign(folder.change_url) : {}} title="Root folder">
+			<RootIcon />
+		</li>
+	);
+
+	if (folder.is_trash) return (
+		<li ref={setNodeRef} className={cssClasses(folder)} onClick={() => !isActive ? window.location.assign(folder.change_url) : {}} title="Trash folder">
+			<RecycleIcon />
+		</li>
+	);
 
 	return (
-		<li
-			ref={setNodeRef}
-			className={cssClasses(folder)}
-			onClick={() => window.location.assign(folder.url)}
-			title={folder.is_root ? "Root folder" : folder.is_trash ? "Trash folder" : folder.name}
-		>{
-			folder.is_root ? <RootIcon /> : folder.is_trash ? <RecycleIcon /> : renderFolder(folder)
-		}</li>
+		<li ref={setNodeRef} className={cssClasses(folder)} onClick={() => !isActive ? window.location.assign(folder.change_url) : {}} title={folder.name}>
+			{folder.name}
+			<span onClick={togglePin.bind(folder)}>{folder.is_pinned ? <CloseIcon /> : <PinIcon/>}</span>
+		</li>
 	);
 }
 
 export function FolderTabs(props) {
-	const {folders, activeFolderId, togglePin} = props;
+	const {folders, activeFolderId, togglePin, settings} = props;
 
 	return (
 		<ul className="folder-tabs">
