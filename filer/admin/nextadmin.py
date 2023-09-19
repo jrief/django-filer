@@ -6,7 +6,7 @@ from django.contrib.admin.utils import unquote
 from django.core.exceptions import ValidationError
 from django.db.models.expressions import F, Value
 from django.db.models.fields import BooleanField, CharField
-from django.db.models.functions import Concat
+from django.db.models.functions import Concat, Lower
 
 from django.forms.widgets import Media
 from django.http.response import (
@@ -17,11 +17,21 @@ from django.template.response import TemplateResponse
 from django.urls import path, reverse
 from django.utils.translation import gettext_lazy as _
 
-from filer.models.nextmodels import InodeModel, NextFolder, NextFile, PinnedFolder
+from filer.models.nextmodels import AbstractFileModel, InodeModel, NextFolder, NextFile, PinnedFolder
 
 
 class InodeAdmin(admin.ModelAdmin):
     extra_data_fields = ['owner_name', 'is_folder', 'parent']
+    sorting_map = {
+        'name_asc': (InodeModel, Lower('name').asc(), lambda inode: inode['name'].lower(), False),
+        'name_desc': (InodeModel, Lower('name').desc(), lambda inode: inode['name'].lower(), True),
+        'date_asc': (InodeModel, 'last_modified_at', lambda inode: inode['last_modified_at'], False),
+        'date_desc': (InodeModel, '-last_modified_at', lambda inode: inode['last_modified_at'], True),
+        'size_asc': (AbstractFileModel, 'file_size', lambda inode: inode.get('file_size', 0), False),
+        'size_desc': (AbstractFileModel, '-file_size', lambda inode: inode.get('file_size', 0), True),
+        'type_asc': (AbstractFileModel, 'mime_type', lambda inode: inode.get('mime_type', ''), False),
+        'type_desc': (AbstractFileModel, '-mime_type', lambda inode: inode.get('mime_type', ''), True),
+    }
 
     @classmethod
     def serialize_inode(cls, inode):
@@ -80,7 +90,7 @@ class InodeAdmin(admin.ModelAdmin):
             folders.append(inode_data)
         return folders
 
-    def get_inodes(self, folder):
+    def get_inodes(self, folder, sorting=None):
         """
         Return a serialized list of file/folder-s for the given folder.
         """
@@ -90,6 +100,9 @@ class InodeAdmin(admin.ModelAdmin):
                 .filter(parent=folder) \
                 .annotate(owner_name=F('owner__username')) \
                 .annotate(is_folder=Value(inode_model.is_folder, output_field=BooleanField()))
+            if applicable_sorting := self.sorting_map.get(sorting):
+                if issubclass(inode_model, applicable_sorting[0]):
+                    queryset = queryset.order_by(applicable_sorting[1])
             data_fields = inode_model.data_fields + self.extra_data_fields
             inodes.extend(values | computed for values, computed in zip(
                 queryset.values(*data_fields),
@@ -100,14 +113,17 @@ class InodeAdmin(admin.ModelAdmin):
                     'summary': obj.summary,
                 } for obj in queryset))
             )
+        if applicable_sorting:
+            inodes.sort(key=applicable_sorting[2], reverse=applicable_sorting[3])
         return inodes
 
     def get_ancestors(self, request, folder):
+        sorting = request.COOKIES.get('django-filer-sorting')
         ancestors = []
         while folder:
             ancestors.append({
                 'folder': folder.id,
-                'inodes': self.get_inodes(folder),
+                'inodes': self.get_inodes(folder, sorting),
             })
             if request.COOKIES.get('django-filer-layout') != 'columns':
                 break  # not required for layout in ['tiles', 'list']

@@ -42,6 +42,16 @@ $trash-background: repeating-linear-gradient(45deg, transparent, transparent 10p
 					cursor: not-allowed;
 				}
 
+				&[aria-haspopup="true"] {
+					position: relative;
+					&::after {
+						content: "▾";
+						position: absolute;
+						right: -10px;
+						top: 5px;
+					}
+				}
+
 				svg {
 					display: inline-block;
 					width: 30px;
@@ -51,6 +61,53 @@ $trash-background: repeating-linear-gradient(45deg, transparent, transparent 10p
 
 				&.erase svg {
 					color: rgb(224, 0, 0);
+				}
+			}
+		}
+
+		.sorting-options {
+			position: absolute;
+			z-index: 1;
+			background-color: white;
+			top: 100%;
+			left: calc(32px - 150px / 2);
+			width: 150px;
+			border: 1px solid grey;
+			border-radius: 3px;
+			box-shadow: 0 0 5px grey;
+			display: flex;
+			flex-direction: column;
+			margin: 0;
+			padding: 3px 0;
+
+			&[hidden] {
+				display: none;
+			}
+
+			li {
+				padding: 0 10px;
+				width: auto;
+				cursor: pointer;
+				display: flex;
+				line-height: 32px;
+				font-size: 16px;
+				&.active {
+					background-color: rgb(255, 255, 204);
+					&::after {
+						content: "✔";
+						position: absolute;
+						right: 10px;
+					}
+				}
+
+				svg {
+					color: grey;
+				}
+				span {
+					margin-left: 40px;
+				}
+				svg + span {
+					margin-left: 10px;
 				}
 			}
 		}

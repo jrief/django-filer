@@ -8,7 +8,7 @@ import {
 	useSensors
 } from '@dnd-kit/core';
 import {restrictToWindowEdges} from '@dnd-kit/modifiers';
-import {useClipboard, useLayout} from './Storage';
+import {useClipboard, useLayout, useSorting} from './Storage';
 import {FileUploader} from './FileUploader';
 import {FolderTabs} from './FolderTabs';
 import {MenuBar} from './MenuBar';
@@ -50,7 +50,7 @@ export default function FilerAdmin(props) {
 			cutInodes();
 		} else if (event.key === 'v' && (event.ctrlKey || event.metaKey || event.altKey)) {
 			pasteInodes();
-		} else if (event.key === 'Delete') {
+		} else if (['Backspace', 'Delete'].includes(event.key)) {
 			deleteInodes();
 		}
 	});
@@ -104,7 +104,7 @@ export default function FilerAdmin(props) {
 		}));
 	}
 
-	function deselectAll(event) {
+	function deselectAll(event?) {
 		setAncestors(ancestors.map(ancestor => ({
 			folder: ancestor.folder,
 			inodes: ancestor.inodes.map(inode => ({...inode, selected: false})),
@@ -222,10 +222,14 @@ export default function FilerAdmin(props) {
 		}
 	}
 
+	function refreshInodes() {
+		fetch(settings.refresh_url).then(handleResponse);
+	}
+
 	function switchLayout(newLayout: string) {
 		setLayout(newLayout);
 		if (newLayout !== layout && newLayout === 'columns') {
-			fetch(settings.refresh_url).then(handleResponse);
+			refreshInodes();
 		}
 	}
 
@@ -239,6 +243,8 @@ export default function FilerAdmin(props) {
 
 	function downloadSelected() {
 		downloadFiles(getCurrentInodes().filter(inode => !inode.is_folder && inode.selected));
+		clearClipboard();
+		deselectAll();
 	}
 
 	function handleResponse(response: Response) {
@@ -384,6 +390,7 @@ export default function FilerAdmin(props) {
 			pasteInodes={pasteInodes}
 			deleteInodes={deleteInodes}
 			eraseTrashFolder={eraseTrashFolder}
+			refreshInodes={refreshInodes}
 			isRoot={settings.is_root}
 			isTrash={settings.is_trash}
 			numSelected={getNumSelected()}

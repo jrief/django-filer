@@ -19,8 +19,7 @@ export const useClipboard = useSessionStorage('filer-clipboard', []);
 
 export const useHistory = useSessionStorage('filer-history', {cursor: -1, hrefs: []});
 
-export const useLayout = (initial: string) : [string, (value: string) => any] => {
-	const key = 'django-filer-layout';
+function useCookie(key, initial) : [string, (value: string) => any] {
 	const [value, setValue] = useState(
 		document.cookie.split('; ').find(row => row.startsWith(`${key}=`))?.split('=')[1] ?? initial
 	);
@@ -41,3 +40,7 @@ export const useLayout = (initial: string) : [string, (value: string) => any] =>
 		},
 	];
 }
+
+export const useLayout = (initial: string) => useCookie('django-filer-layout', initial);
+
+export const useSorting = () => useCookie('django-filer-sorting', '');
