@@ -75,8 +75,15 @@ def scale_and_crop_with_subject_location(im, size, subject_location=False,
         scale *= (100 + int(zoom)) / 100.0
 
     if scale < 1.0 or (scale > 1.0 and upscale):
+        # Check Pillow version and use right constant
+        try:
+            # Pillow >= 9.1.0
+            Image__Resampling__LANCZOS = Image.Resampling.LANCZOS
+        except AttributeError:
+            # Pillow < 9.1.0
+            Image__Resampling__LANCZOS = Image.ANTIALIAS
         im = im.resize((int(source_x * scale), int(source_y * scale)),
-                       resample=Image.ANTIALIAS)
+                       resample=Image__Resampling__LANCZOS)
     # --endsnip-- begin real code
 
     # ===============================
