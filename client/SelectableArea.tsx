@@ -1,5 +1,6 @@
-import React, {useState, useRef} from 'react';
+import React, {forwardRef, useContext, useEffect, useImperativeHandle, useRef, useState} from 'react';
 import {InodeList} from './InodeList';
+import {FolderSettings} from "./FolderSettings";
 
 
 function SelectRectangle(props) {
@@ -18,12 +19,63 @@ function SelectRectangle(props) {
 }
 
 
-export function SelectableArea(props) {
-	const {settings, inodes, setInodes, folderId, clearClipboard} = props;
+export const SelectableArea = forwardRef((props: any, ref) => {
+	const settings = useContext(FolderSettings);
+	const {folderId, clearClipboard, layout} = props;
 	const areaRef = useRef(null);
+	const [inodes, setInodes] = useState([]);
 	const [lastSelectedInode, setSelectedInode] = useState(-1);
 	const [activeRect, setActiveRect] = useState(null);
 	const [clickHandler, setClickHandler] = useState(null);
+
+	useEffect(() => {
+		fetchInodes();
+	}, []);
+
+	useImperativeHandle(ref, () => ({
+		async fetchInodes() {
+			await fetchInodes();
+		},
+		async addFolder() {
+			await addFolder();
+		},
+	}));
+
+	async function fetchInodes() {
+		const fetchInodesUrl = `${settings.base_url}${folderId}/fetch`;
+		const response = await fetch(fetchInodesUrl);
+		if (response.ok) {
+			const body = await response.json();
+			setInodes(body.inodes);
+		} else {
+			console.error(response);
+			return;
+		}
+	}
+
+	async function addFolder() {
+		const folderName = window.prompt("Enter folder name");
+		if (!folderName)
+			return;
+		const addFolderUrl = `${settings.base_url}${settings.folder_id}/add_folder`;
+		const response = await fetch(addFolderUrl, {
+			method: 'POST',
+			headers: {
+				'Content-Type': 'application/json',
+				'X-CSRFToken': settings.csrf_token,
+			},
+			body: JSON.stringify({
+				name: folderName,
+			}),
+		});
+		if (response.ok) {
+			const body = await response.json();
+			setInodes([...inodes, body.new_folder]);
+		} else {
+			console.error(response);
+			return;
+		}
+	}
 
 	function selectInode(event: PointerEvent) {
 		if (this.disabled)
@@ -66,12 +118,8 @@ export function SelectableArea(props) {
 				setSelectedInode(inodes.findIndex(inode => inode.id === this.id));
 			}
 		}
-		setInodes(
-			folderId,
-			inodes.map((f, k) => ({...modifier(f, k), cutted: false, copied: false})),
-			inode => ({...inode, cutted: false, copied: false, selected: false}),
-		);
-		clearClipboard();
+		setInodes(inodes.map((f, k) => ({...modifier(f, k), cutted: false, copied: false})));
+		//clearClipboard();
 	}
 
 	const selectionStart = (event) => {
@@ -164,10 +212,12 @@ export function SelectableArea(props) {
 		return classes.join(' ');
 	}
 
+	console.log('render SelectableArea', folderId);
+
 	return (
 		<div ref={areaRef} className={cssClasses()} onMouseDown={selectionStart} onMouseMove={selectionExtend} onMouseUp={selectionEnd} onMouseLeave={selectionDiscard}>
-			<InodeList {...props} selectInode={selectInode} />
+			<InodeList inodes={inodes} folderId={folderId} layout={layout} selectInode={selectInode} />
 			<SelectRectangle style={activeRect} />
 		</div>
 	)
-}
+});

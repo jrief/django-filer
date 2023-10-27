@@ -1,10 +1,12 @@
-import React from 'react';
+import React, {useContext} from 'react';
 import {useDroppable} from '@dnd-kit/core';
 import {Folder, File, Inode, ListItem} from './Inode';
+import {FolderSettings} from './FolderSettings';
 
 
 export function InodeList(props) {
-	const {inodes, folderId, setInodes, layout, settings} = props;
+	const settings = useContext(FolderSettings);
+	const {inodes, folderId, layout} = props;
 	const {
 		isOver,
 		over,
@@ -14,8 +16,9 @@ export function InodeList(props) {
 	});
 
 	function changeInode(newInode, persist?: boolean) {
+		const updateInodeUrl = `${settings.base_url}/${folderId}/update`;
 		if (persist && newInode.dirty) {
-			fetch(settings.update_inode_url, {
+			fetch(updateInodeUrl, {
 				method: 'POST',
 				headers: {
 					'Content-Type': 'application/json',
@@ -41,6 +44,8 @@ export function InodeList(props) {
 		}
 		return classes.join(' ');
 	}
+
+	console.log('InodeList', folderId, inodes);
 
 	return (
 		<ul ref={setNodeRef} className={cssClasses()}>
