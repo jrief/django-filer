@@ -50,13 +50,11 @@ function useSearchParam(key) : [string, (value: string) => any] {
 
 export default function FilerAdmin(props) {
 	const settings = useContext(FolderSettings); console.log(settings);
-	//const primaryFolderId = getPrimaryFolderId();
 	const uploaderRef = useRef(null);
+	const areaRefs = Object.fromEntries(settings.ancestors.map(id => [id, useRef(null)]));
 	const overlayRef = useRef(null);
 	const downloadLinkRef = useRef(null);
 	const [clipboard, setClipboard] = useClipboard();
-	//const [ancestors, setAncestors] = useState([]);
-	const [workAreas, setWorkAreas] = useState(settings.ancestors.map(ancestor => ({folderId: ancestor, rerender: 0})));
 	const [currentFolderId, setCurrentFolder] = useState(settings.folder_id);
 	const [favoriteFolders, setFavoriteFolders] = useState(settings.favorite_folders);
 	const [layout, setLayout] = useLayout('tiles');
@@ -135,10 +133,10 @@ export default function FilerAdmin(props) {
 	// 	}));
 	// }
 
-	function initializeCurrentFolder() {
-	 	const params = new URLSearchParams(window.location.search);
-		return params.get('q') ? 'search-result' : primaryFolderId;
-	}
+	// function initializeCurrentFolder() {
+	//  	const params = new URLSearchParams(window.location.search);
+	// 	return params.get('q') ? 'search-result' : primaryFolderId;
+	// }
 
 	function clearClipboard() {
 		setClipboard([]);
@@ -165,19 +163,19 @@ export default function FilerAdmin(props) {
 		};
 	}
 
-	function setInodes(folderId, inodes, modifier=inode => ({...inode, selected: false})) {
-		if (folderId !== currentFolderId) {
-			setCurrentFolder(folderId);
-		}
-		setAncestors(ancestors.map(ancestor => {
-			return {
-				folder: ancestor.folder,
-				inodes: ancestor.folder === folderId
-					? inodes
-					: ancestor.inodes.map(inode => modifier(inode)),
-			};
-		}));
-	}
+	// function setInodes(folderId, inodes, modifier=inode => ({...inode, selected: false})) {
+	// 	if (folderId !== currentFolderId) {
+	// 		setCurrentFolder(folderId);
+	// 	}
+	// 	setAncestors(ancestors.map(ancestor => {
+	// 		return {
+	// 			folder: ancestor.folder,
+	// 			inodes: ancestor.folder === folderId
+	// 				? inodes
+	// 				: ancestor.inodes.map(inode => modifier(inode)),
+	// 		};
+	// 	}));
+	// }
 
 	function deselectAll(event?) {
 		setAncestors(ancestors.map(ancestor => ({
@@ -204,29 +202,30 @@ export default function FilerAdmin(props) {
 		});
 	}
 
-	function addFolder() {
-		const folderName = window.prompt("Enter folder name");
-		if (!folderName)
-			return;
-		fetch(settings.add_folder_url, {
-			method: 'POST',
-			headers: {
-				'Content-Type': 'application/json',
-				'X-CSRFToken': settings.csrf_token,
-			},
-			body: JSON.stringify({
-				name: folderName,
-			}),
-		}).then(async response => {
-			const inodes = getCurrentInodes();
-			if (response.status === 200) {
-				const body = await response.json();
-				setInodes(primaryFolderId, [...inodes, body.new_folder]);
-			} else {
-				console.error(response);
-			}
-		});
-	}
+	// function addFolder() {
+	// 	const folderName = window.prompt("Enter folder name");
+	// 	if (!folderName)
+	// 		return;
+	// 	const addFolderUrl = `${settings.base_url}${settings.folder_id}/add_folder`;
+	// 	fetch(addFolderUrl, {
+	// 		method: 'POST',
+	// 		headers: {
+	// 			'Content-Type': 'application/json',
+	// 			'X-CSRFToken': settings.csrf_token,
+	// 		},
+	// 		body: JSON.stringify({
+	// 			name: folderName,
+	// 		}),
+	// 	}).then(async response => {
+	// 		const inodes = getCurrentInodes();
+	// 		if (response.status === 200) {
+	// 			const body = await response.json();
+	// 			setInodes(primaryFolderId, [...inodes, body.new_folder]);
+	// 		} else {
+	// 			console.error(response);
+	// 		}
+	// 	});
+	// }
 
 	function copyInodes() {
 		const inodes = getCurrentInodes();
@@ -301,27 +300,27 @@ export default function FilerAdmin(props) {
 		}
 	}
 
-	async function togglePin(pinnedId) {
-		const response = await fetch(settings.toggle_pin_url, {
-			method: 'POST',
-			headers: {
-				'Content-Type': 'application/json',
-				'X-CSRFToken': settings.csrf_token,
-			},
-			body: JSON.stringify({
-				pinned_id: pinnedId
-			}),
-		});
-		if (response.status === 200) {
-			const data = await response.json();
-			if (data.success_url) {
-				// unpinned current folder, redirect to success_url
-				window.location.assign(data.success_url);
-				return;
-			}
-			setFavoriteFolders(data.favorite_folders);
-		}
-	}
+	// async function togglePin(pinnedId) {
+	// 	const response = await fetch(settings.toggle_pin_url, {
+	// 		method: 'POST',
+	// 		headers: {
+	// 			'Content-Type': 'application/json',
+	// 			'X-CSRFToken': settings.csrf_token,
+	// 		},
+	// 		body: JSON.stringify({
+	// 			pinned_id: pinnedId
+	// 		}),
+	// 	});
+	// 	if (response.status === 200) {
+	// 		const data = await response.json();
+	// 		if (data.success_url) {
+	// 			// unpinned current folder, redirect to success_url
+	// 			window.location.assign(data.success_url);
+	// 			return;
+	// 		}
+	// 		setFavoriteFolders(data.favorite_folders);
+	// 	}
+	// }
 
 	function fetchInodes() {
 		let fetchUrl = settings.refresh_url;
@@ -351,11 +350,6 @@ export default function FilerAdmin(props) {
 		downloadFiles(getCurrentInodes().filter(inode => !inode.is_folder && inode.selected));
 		clearClipboard();
 		deselectAll();
-	}
-
-	function handleUpload(folderId) {
-		console.log('handleUpload', folderId);
-		setWorkAreas(workAreas.map(area => (area.folderId === folderId) ? {...area, rerender: area.rerender + 1} : area));
 	}
 
 	function handleDragStart(event) {
@@ -450,18 +444,18 @@ export default function FilerAdmin(props) {
 		let previousFolder = null;
 		return (
 			<div className={`work-area ${layout}`}>{
-				(layout === 'columns' ? workAreas : [workAreas[0]]).map(area => {
+				(layout === 'columns' ? settings.ancestors : [settings.ancestors[0]]).map(folderId => {
 					const snippet = (
 					<FileUploader
-						key={area.folderId}
-						ref={area.folderId === settings.folder_id ? uploaderRef : null}
-						folderId={area.folderId}
-						handleUpload={handleUpload}
+						key={folderId}
+						ref={folderId === settings.folder_id ? uploaderRef : null}
+						folderId={folderId}
+						handleUpload={id => areaRefs[id].current.fetchInodes()}
 					>
-						<SelectableArea {...attributes} {...area} previousFolder={previousFolder} />
+						<SelectableArea ref={areaRefs[folderId]} {...attributes} folderId={folderId} previousFolder={previousFolder} />
 					</FileUploader>
 					);
-					previousFolder = area.folderId;
+					previousFolder = folderId;
 					return snippet;
 				})
 			}</div>
@@ -484,7 +478,7 @@ export default function FilerAdmin(props) {
 	return (<>
 		<MenuBar
 			clipboard={clipboard}
-			addFolder={addFolder}
+			addFolder={() => areaRefs[settings.folder_id].current.addFolder()}
 			openUploader={() => uploaderRef.current.openUploader()}
 			downloadSelected={downloadSelected}
 			setSearchQuery={setSearchQuery}
@@ -504,7 +498,11 @@ export default function FilerAdmin(props) {
 			sensors={sensors}
 			collisionDetection={pointerWithin}
 		>
-			<FolderTabs activeFolderId={currentFolderId === 'search-result' ? 'search-result' : settings.folder_id} folders={favoriteFolders} togglePin={togglePin} parentUrl={settings.parent_url} />
+			<FolderTabs
+				activeFolderId={currentFolderId === 'search-result' ? 'search-result' : settings.folder_id}
+				favoriteFolders={favoriteFolders}
+				setFavoriteFolders={setFavoriteFolders}
+			/>
 			{renderWorkArea()}
 			{settings.is_trash ? null : renderDroppables()}
 			<div ref={overlayRef}>
