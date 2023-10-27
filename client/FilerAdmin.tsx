@@ -1,4 +1,4 @@
-import React, {useRef, useState} from 'react';
+import React, {useCallback, useContext, useEffect, useMemo, useRef, useState} from 'react';
 import {
 	DndContext,
 	DragOverlay,
@@ -8,7 +8,8 @@ import {
 	useSensors
 } from '@dnd-kit/core';
 import {restrictToWindowEdges} from '@dnd-kit/modifiers';
-import {useClipboard, useLayout, useSorting} from './Storage';
+import {useClipboard, useLayout} from './Storage';
+import {FolderSettings} from './FolderSettings';
 import {FileUploader} from './FileUploader';
 import {FolderTabs} from './FolderTabs';
 import {MenuBar} from './MenuBar';
@@ -19,17 +20,47 @@ import DownloadIcon from './icons/download.svg';
 import TrashIcon from './icons/trash.svg';
 
 
+function useSearchParam(key) : [string, (value: string) => any] {
+	const params = new URLSearchParams(window.location.search);
+	const [value, setValue] = useState(
+		params.get(key) || ''
+	);
+
+	function setParam(value) {
+		console.log('setParam', value);
+		if (value) {
+			const params = new URLSearchParams();
+			params.set(key, value);
+			const url = `${window.location.pathname}?${params.toString()}`;
+			window.history.pushState(Object.fromEntries(params.entries()), undefined, url);
+		} else {
+			window.history.pushState({}, undefined, window.location.pathname);
+		}
+	}
+
+	return [
+		value,
+		value => {
+			setParam(value);
+			setValue(value);
+		},
+	];
+}
+
+
 export default function FilerAdmin(props) {
-	const {settings} = props;
-	const primaryFolderId = settings.ancestors[0].folder;
+	const settings = useContext(FolderSettings); console.log(settings);
+	//const primaryFolderId = getPrimaryFolderId();
 	const uploaderRef = useRef(null);
 	const overlayRef = useRef(null);
 	const downloadLinkRef = useRef(null);
 	const [clipboard, setClipboard] = useClipboard();
-	const [ancestors, setAncestors] = useState(initializeAncestors());
-	const [currentFolderId, setCurrentFolder] = useState(primaryFolderId);
+	//const [ancestors, setAncestors] = useState([]);
+	const [workAreas, setWorkAreas] = useState(settings.ancestors.map(ancestor => ({folderId: ancestor, rerender: 0})));
+	const [currentFolderId, setCurrentFolder] = useState(settings.folder_id);
 	const [favoriteFolders, setFavoriteFolders] = useState(settings.favorite_folders);
 	const [layout, setLayout] = useLayout('tiles');
+	const [searchQuery, setSearchQuery] = useSearchParam('q');
 	const [draggedIds, setDraggedIds] = useState(null);
 	const sensors = useSensors(
 		useSensor(PointerSensor, {
@@ -54,15 +85,59 @@ export default function FilerAdmin(props) {
 			deleteInodes();
 		}
 	});
+	// useEffect(() => {
+	// 	console.log('useEffect', searchQuery);
+	// 	fetchInodes();
+	// }, [searchQuery]);
+	//initializeAncestors();
+	// useCallback(() => {
+	// 	console.log('useCallback', searchQuery);
+	// 	initializeAncestors();
+	// }, [searchQuery]);
 
-	function initializeAncestors() {
-		return settings.ancestors.map(ancestor => ({
-			folder: ancestor.folder,
-			inodes: ancestor.inodes.map(inode => {
-				const entry = clipboard.find(entry => entry.id === inode.id);
-				return entry ? {...inode, cutted: entry.cutted, copied: entry.copied} : inode;
-			}),
-		}));
+	// useEffect(() => {
+	// 	initializeAncestors();
+	// }, []);
+
+	// function getPrimaryFolderId() {
+	// 	const found = window.location.pathname.match(/^.+\/([0-9a-f]{8}(-[0-9a-f]{4}){3}-[0-9a-f]{12})\/.+$/);
+	// 	if (!found)
+	// 		throw new Error(`Invalid URL for django-filer: ${window.location.pathname}`);
+	// 	return found[1];
+	// }
+
+	// async function initializeAncestors() {
+	// 	const ancestors = [];
+	// 	let fetch_inodes_url = settings.fetch_inodes_url;
+	// 	console.log('fetch_inodes_url', fetch_inodes_url);
+	// 	while (fetch_inodes_url) {
+	// 		const response = await fetch(fetch_inodes_url);
+	// 		if (response.ok) {
+	// 			const body = await response.json();
+	// 			ancestors.push({
+	// 				folder: body.folder,
+	// 				inodes: body.inodes,
+	// 			});
+	// 			fetch_inodes_url = body.fetch_parent_url;
+	// 		} else {
+	// 			console.error(response);
+	// 			return;
+	// 		}
+	// 	}
+	// 	setAncestors(ancestors);
+	//
+	// 	ancestors.map(ancestor => ({
+	// 		folder: ancestor.folder,
+	// 		inodes: ancestor.inodes.map(inode => {
+	// 			const entry = clipboard.find(entry => entry.id === inode.id);
+	// 			return entry ? {...inode, cutted: entry.cutted, copied: entry.copied} : inode;
+	// 		}),
+	// 	}));
+	// }
+
+	function initializeCurrentFolder() {
+	 	const params = new URLSearchParams(window.location.search);
+		return params.get('q') ? 'search-result' : primaryFolderId;
 	}
 
 	function clearClipboard() {
@@ -110,6 +185,23 @@ export default function FilerAdmin(props) {
 			inodes: ancestor.inodes.map(inode => ({...inode, selected: false})),
 		})));
 		setCurrentFolder(primaryFolderId);
+	}
+
+	function searchForInodes(query: string) {
+		const params = new URLSearchParams({q: query});
+		const searchUrl = `${settings.search_inodes_url}?${params.toString()}`;
+		fetch(searchUrl).then(async response => {
+			if (response.ok) {
+				const body = await response.json();
+				setCurrentFolder('search-result');
+				setAncestors([{
+					folder: 'search-result',
+					inodes: body.inodes,
+				}]);
+			} else {
+				console.error(response);
+			}
+		});
 	}
 
 	function addFolder() {
@@ -163,6 +255,10 @@ export default function FilerAdmin(props) {
 		if (!fetchUrl)
 			return;
 
+		if (searchQuery) {
+			const params = new URLSearchParams({q: searchQuery});
+			fetchUrl = `${fetchUrl}?${params.toString()}`;
+		}
 		fetch(fetchUrl, {
 			method: 'POST',
 			headers: {
@@ -176,7 +272,12 @@ export default function FilerAdmin(props) {
 	function deleteInodes() {
 		clearClipboard();
 		const inodes = getCurrentInodes().filter(inode => inode.selected).map(inode => inode.id);
-		fetch(settings.delete_inodes_url, {
+		let fetchUrl = settings.delete_inodes_url;
+		if (searchQuery) {
+			const params = new URLSearchParams({q: searchQuery});
+			fetchUrl = `${fetchUrl}?${params.toString()}`;
+		}
+		fetch(fetchUrl, {
 			method: 'POST',
 			headers: {
 				'Content-Type': 'application/json',
@@ -222,14 +323,19 @@ export default function FilerAdmin(props) {
 		}
 	}
 
-	function refreshInodes() {
-		fetch(settings.refresh_url).then(handleResponse);
+	function fetchInodes() {
+		let fetchUrl = settings.refresh_url;
+		if (searchQuery) {
+			const params = new URLSearchParams({q: searchQuery});
+			fetchUrl = `${fetchUrl}?${params.toString()}`;
+		}
+		fetch(fetchUrl).then(handleResponse);
 	}
 
 	function switchLayout(newLayout: string) {
 		setLayout(newLayout);
 		if (newLayout !== layout && newLayout === 'columns') {
-			refreshInodes();
+			fetchInodes();
 		}
 	}
 
@@ -247,15 +353,9 @@ export default function FilerAdmin(props) {
 		deselectAll();
 	}
 
-	function handleResponse(response: Response) {
-		if (response.status === 200) {
-			response.json().then(data => {
-				setAncestors(data.ancestors);
-				setFavoriteFolders(data.favorite_folders);
-			});
-		} else {
-			console.error(response);
-		}
+	function handleUpload(folderId) {
+		console.log('handleUpload', folderId);
+		setWorkAreas(workAreas.map(area => (area.folderId === folderId) ? {...area, rerender: area.rerender + 1} : area));
 	}
 
 	function handleDragStart(event) {
@@ -291,7 +391,11 @@ export default function FilerAdmin(props) {
 				}, 1000);
 				return;
 			}
-			const fetchUrl = what === 'discard' ? settings.delete_inodes_url : settings.move_inodes_url;
+			let fetchUrl = what === 'discard' ? settings.delete_inodes_url : settings.move_inodes_url;
+			if (searchQuery) {
+				const params = new URLSearchParams({q: searchQuery});
+				fetchUrl = `${fetchUrl}?${params.toString()}`;
+			}
 			fetch(fetchUrl, {
 				method: 'POST',
 				headers: {
@@ -316,7 +420,8 @@ export default function FilerAdmin(props) {
 	}
 
 	function getCurrentInodes() {
-		return ancestors.find(ancestor => ancestor.folder === currentFolderId).inodes;
+		return [];
+		return ancestors.find(ancestor => ancestor.folder === currentFolderId)?.inodes ?? [];
 	}
 
 	function getNumSelected() {
@@ -327,39 +432,36 @@ export default function FilerAdmin(props) {
 		return getCurrentInodes().filter(inode => !inode.is_folder && inode.selected).length;
 	}
 
-	const attributes = {deselectAll, handleResponse, setInodes, currentFolderId, settings, clearClipboard};
-
 	function renderWorkArea() {
+		const attributes = {deselectAll, clearClipboard, layout};
+
 		if (settings.is_trash) return (
 			<div className={`work-area ${layout}`}>
-				<SelectableArea {...attributes} folderId={ancestors[0].folder} inodes={ancestors[0].inodes} layout={layout} />
+				<SelectableArea {...attributes} folderId={settings.folder} />
 			</div>
 		);
 
-		if (layout !== 'columns') return (
+		if (searchQuery) return (
 			<div className={`work-area ${layout}`}>
-				<FileUploader ref={uploaderRef} folderId={primaryFolderId} settings={settings} handleResponse={handleResponse}>
-					<SelectableArea {...attributes} folderId={primaryFolderId} inodes={ancestors[0].inodes} layout={layout} />
-				</FileUploader>
+				<SelectableArea {...attributes} folderId="search-result" inodes={ancestors.find(ancestor => ancestor.folder === 'search-result').inodes} />
 			</div>
 		);
 
 		let previousFolder = null;
 		return (
 			<div className={`work-area ${layout}`}>{
-				ancestors.map(ancestor => {
+				(layout === 'columns' ? workAreas : [workAreas[0]]).map(area => {
 					const snippet = (
 					<FileUploader
-						key={ancestor.folder}
-						ref={ancestor.folder === primaryFolderId ? uploaderRef : null}
-						folderId={ancestor.folder}
-						settings={settings}
-						handleResponse={handleResponse}
+						key={area.folderId}
+						ref={area.folderId === settings.folder_id ? uploaderRef : null}
+						folderId={area.folderId}
+						handleUpload={handleUpload}
 					>
-						<SelectableArea {...attributes} folderId={ancestor.folder} inodes={ancestor.inodes} layout={layout} previousFolder={previousFolder} />
+						<SelectableArea {...attributes} {...area} previousFolder={previousFolder} />
 					</FileUploader>
 					);
-					previousFolder = ancestor.folder;
+					previousFolder = area.folderId;
 					return snippet;
 				})
 			}</div>
@@ -378,21 +480,20 @@ export default function FilerAdmin(props) {
 		</>);
 	}
 
+	console.log("render main");
 	return (<>
 		<MenuBar
 			clipboard={clipboard}
 			addFolder={addFolder}
 			openUploader={() => uploaderRef.current.openUploader()}
 			downloadSelected={downloadSelected}
+			setSearchQuery={setSearchQuery}
 			setLayout={switchLayout}
 			copyInodes={copyInodes}
 			cutInodes={cutInodes}
 			pasteInodes={pasteInodes}
 			deleteInodes={deleteInodes}
 			eraseTrashFolder={eraseTrashFolder}
-			refreshInodes={refreshInodes}
-			isRoot={settings.is_root}
-			isTrash={settings.is_trash}
 			numSelected={getNumSelected()}
 			numSelectedFiles={getNumSelectedFiles()}
 		/>
@@ -403,7 +504,7 @@ export default function FilerAdmin(props) {
 			sensors={sensors}
 			collisionDetection={pointerWithin}
 		>
-			<FolderTabs activeFolderId={settings.id} folders={favoriteFolders} togglePin={togglePin} parentUrl={settings.parent_url} />
+			<FolderTabs activeFolderId={currentFolderId === 'search-result' ? 'search-result' : settings.folder_id} folders={favoriteFolders} togglePin={togglePin} parentUrl={settings.parent_url} />
 			{renderWorkArea()}
 			{settings.is_trash ? null : renderDroppables()}
 			<div ref={overlayRef}>
