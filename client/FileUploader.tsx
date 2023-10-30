@@ -1,4 +1,5 @@
-import React, {forwardRef, useEffect, useImperativeHandle, useState, useRef} from 'react';
+import React, {forwardRef, useContext, useEffect, useImperativeHandle, useRef, useState} from 'react';
+import {FolderSettings} from './FolderSettings';
 
 
 function ProgressOverlay(props) {
@@ -20,11 +21,12 @@ function ProgressOverlay(props) {
 
 
 function ProgressBar(props) {
-	const {file, folderId, settings} = props;
+	const settings = useContext(FolderSettings);
+	const {file, folderId} = props;
 	const [complete, setComplete] = useState(0);
-	const uploadFilesURL = settings.upload_files_url.replace('00000000-0000-0000-0000-000000000000', folderId);
 
 	useEffect(() => {
+		const uploadFilesURL = `${settings.base_url}${folderId}/upload`;
 		const request = new XMLHttpRequest();
 		request.addEventListener('loadstart', transferStart);
 		request.upload.addEventListener('progress', transferProgress, false);
@@ -75,7 +77,8 @@ function ProgressBar(props) {
 
 
 export const FileUploader = forwardRef((props: any, ref) => {
-	const {folderId, handleResponse, settings} = props;
+	const settings = useContext(FolderSettings);
+	const {folderId, handleUpload} = props;
 	const inputRef = useRef(null);
 	const [dragging, setDragging] = useState(false);
 	const [uploading, setUploading] = useState([]);
@@ -126,7 +129,7 @@ export const FileUploader = forwardRef((props: any, ref) => {
 			alert(error);
 		}).finally( () => {
 			setUploading([]);
-			fetch(settings.refresh_url).then(handleResponse);
+			handleUpload(folderId);
 		});
 	}
 
@@ -144,7 +147,7 @@ export const FileUploader = forwardRef((props: any, ref) => {
 			{dragging || uploading.length > 0 ? (
 			<ProgressOverlay dragging={dragging}>{
 			uploading.map((file, index) =>
-				<ProgressBar key={index} file={file} folderId={folderId} settings={settings} />
+				<ProgressBar key={index} file={file} folderId={folderId} />
 			)
 			}</ProgressOverlay>
 			) : null}

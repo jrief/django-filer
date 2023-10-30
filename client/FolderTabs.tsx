@@ -1,13 +1,15 @@
 import {useDroppable} from '@dnd-kit/core';
-import React from 'react';
+import React, {useContext, useTransition} from 'react';
 import CloseIcon from './icons/close.svg';
 import PinIcon from './icons/pin.svg';
 import RecycleIcon from './icons/recycle.svg';
 import RootIcon from './icons/root.svg';
 import UpIcon from './icons/folder-up.svg';
+import {FolderSettings} from "./FolderSettings";
 
 
 function FolderTab(props) {
+	const [isPending, startTransition] = useTransition();
 	const {folder, activeFolderId} = props;
 	const {
 		isOver,
@@ -37,6 +39,14 @@ function FolderTab(props) {
 		return classes.join(' ');
 	}
 
+	function selectTab(event) {
+		if (!isActive) {
+			startTransition(() => {
+				window.location.assign(folder.change_url);
+			});
+		}
+	}
+
 	if (folder.is_root) return (
 		<li ref={setNodeRef} className={cssClasses(folder)} onClick={() => !isActive ? window.location.assign(folder.change_url) : {}} title="Root folder">
 			<RootIcon />
@@ -50,7 +60,7 @@ function FolderTab(props) {
 	);
 
 	return (
-		<li ref={setNodeRef} className={cssClasses(folder)} onClick={() => !isActive ? window.location.assign(folder.change_url) : {}} title={folder.name}>
+		<li ref={setNodeRef} className={cssClasses(folder)} onClick={selectTab} title={folder.name}>
 			{folder.name}
 			<span onClick={togglePin.bind(folder)}>{folder.is_pinned ? <CloseIcon /> : <PinIcon/>}</span>
 		</li>
@@ -58,12 +68,36 @@ function FolderTab(props) {
 }
 
 export function FolderTabs(props) {
-	const {folders, activeFolderId, togglePin, settings} = props;
+	const settings = useContext(FolderSettings);
+	const {favoriteFolders, setFavoriteFolders, activeFolderId} = props;
+
+	async function togglePin(pinnedId) {
+		const togglePinUrl = `${settings.base_url}${settings.folder_id}/toggle_pin`;
+		const response = await fetch(togglePinUrl, {
+			method: 'POST',
+			headers: {
+				'Content-Type': 'application/json',
+				'X-CSRFToken': settings.csrf_token,
+			},
+			body: JSON.stringify({
+				pinned_id: pinnedId
+			}),
+		});
+		if (response.status === 200) {
+			const data = await response.json();
+			if (data.success_url) {
+				// unpinned current folder, redirect to success_url
+				window.location.assign(data.success_url);
+				return;
+			}
+			setFavoriteFolders(data.favorite_folders);
+		}
+	}
 
 	return (
 		<ul className="folder-tabs">
-			{folders[0].is_root ? null : <li><a href={props.parentUrl}><UpIcon /></a></li>}
-			{folders.map(folder =>
+			{settings.parent_url ? <li><a href={settings.parent_url}><UpIcon /></a></li> : null}
+			{favoriteFolders.map(folder =>
 				<FolderTab
 					key={folder.id}
 					folder={folder}

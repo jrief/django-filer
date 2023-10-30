@@ -1,7 +1,7 @@
 import {useEffect, useState} from 'react';
 
 
-function useSessionStorage(storageKey, initial) {
+function useSessionStorage(storageKey: string, initial) {
 	return () => {
 		const [value, setValue] = useState(
 			JSON.parse(sessionStorage.getItem(storageKey)) ?? initial
@@ -30,7 +30,7 @@ function useCookie(key, initial) : [string, (value: string) => any] {
 
 	useEffect(() => {
 		setCookie(value);
-	}, [value, key]);
+	}, [value]);
 
 	return [
 		value,

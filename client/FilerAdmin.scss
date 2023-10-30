@@ -13,15 +13,14 @@ $trash-background: repeating-linear-gradient(45deg, transparent, transparent 10p
 	padding: 0;
 
 	nav[role="menubar"] {
-		margin-top: 4px;
-		height: 32px;
+		margin: 4px 0;
 
 		ul {
 			list-style: none;
 			box-sizing: border-box;
 			display: flex;
 			flex-wrap: wrap;
-			margin: 0 24px;
+			margin: 0 15px;
 			padding: 0;
 
 			li {
@@ -52,6 +51,10 @@ $trash-background: repeating-linear-gradient(45deg, transparent, transparent 10p
 					}
 				}
 
+				&.erase svg {
+					color: rgb(224, 0, 0);
+				}
+
 				svg {
 					display: inline-block;
 					width: 30px;
@@ -59,8 +62,42 @@ $trash-background: repeating-linear-gradient(45deg, transparent, transparent 10p
 					margin: 1px;
 				}
 
-				&.erase svg {
-					color: rgb(224, 0, 0);
+				&:has(> input) {
+					display: inline-flex;
+					width: calc(100% - 400px);
+					max-width: 400px;
+					svg {
+						transform: scale(0.8);
+					}
+				}
+
+				&:has(> input:focus-visible) {
+					box-shadow: rgb(50, 150, 250) 0 0 5px;
+				}
+
+				input[type="search"] {
+					width: calc(100% - 48px);
+					min-width: 100px;
+					height: 100%;
+					display: block;
+					margin: 0;
+					padding: 2px 8px;
+					border: 1px solid lightgrey;
+					border-right: none;
+					border-top-left-radius: 5px;
+					border-bottom-left-radius: 5px;
+
+					&:focus-visible {
+						outline: none;
+					}
+
+					& + span {
+						border: 1px solid lightgrey;
+						border-left: none;
+						border-top-right-radius: 5px;
+						border-bottom-right-radius: 5px;
+						padding: 0 5px 0 10px;
+					}
 				}
 			}
 		}
@@ -139,10 +176,6 @@ $trash-background: repeating-linear-gradient(45deg, transparent, transparent 10p
 				cursor: pointer;
 				border-bottom: 1px solid lightgrey;
 			}
-			&.drag-over {
-				color: rgb(255, 255, 204);
-				background-color: rgb(65, 118, 144);
-			}
 			&.trash {
 				background-image: $trash-background;
 				background-color: transparent;
@@ -175,7 +208,19 @@ $trash-background: repeating-linear-gradient(45deg, transparent, transparent 10p
 	.work-area {
 		position: relative;
 		width: 100%;
-		height: calc(100% - 75px);
+		height: calc(100% - 80px);
+
+		.column-droppable {
+			position: absolute;
+			top: 0;
+			right: 0;
+			bottom: 0;
+			left: 0;
+
+			&.drag-over ul.inode-list, &.drag-over ul.inode-list > li {
+				background-color: rgb(121, 174, 200);
+			}
+		}
 
 		.inode-list {
 			position: absolute;
@@ -267,9 +312,8 @@ $trash-background: repeating-linear-gradient(45deg, transparent, transparent 10p
 		}
 
 		.selectable-area {
-			position: relative;
-			width: 100%;
-			height: 100%;
+			position: absolute;
+			top: 0; right: 0; bottom: 0; left: 0;
 
 			&.trash {
 				.inode-list, li {
@@ -499,9 +543,9 @@ $trash-background: repeating-linear-gradient(45deg, transparent, transparent 10p
 				}
 			}
 
-			&.drag-over, &.drag-over > li {
-				background-color: rgb(121, 174, 200);
-			}
+			//&.drag-over, &.drag-over > li {
+			//	background-color: rgb(121, 174, 200);
+			//}
 		}
 	}
 

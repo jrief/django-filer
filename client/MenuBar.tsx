@@ -1,5 +1,7 @@
-import React, {useRef} from 'react';
+import React, {useRef, useContext} from 'react';
 import {useSorting} from './Storage';
+import {FolderSettings} from "./FolderSettings";
+import SearchIcon from './icons/search.svg';
 import CopyIcon from './icons/copy.svg';
 import TilesIcon from './icons/tiles.svg';
 import ListIcon from './icons/list.svg';
@@ -17,8 +19,32 @@ import UploadIcon from './icons/upload.svg';
 
 
 export function MenuBar(props) {
+	const settings = useContext(FolderSettings);
+	const searchRef = useRef(null);
 	const sortingRef = useRef(null);
 	const [sorting, setSorting] = useSorting();
+
+	function handleSearch(event) {
+		if (searchRef.current.value.length > 2) {
+			props.setSearchQuery(searchRef.current.value);
+			//props.searchForInodes(searchRef.current.value);
+		} else {
+			props.setSearchQuery('');
+		}
+	}
+
+	function resetSearch(event) {
+		if (searchRef.current.value === '') {
+			debugger;
+		}
+	}
+
+	function handleInputEnter(event) {
+		if (event.key === 'Enter') {
+			handleSearch(event);
+		}
+		event.stopPropagation();
+	}
 
 	function confirmEraseTrashFolder() {
 		if (window.confirm("Erase all files in the trash folder?")) {
@@ -56,10 +82,15 @@ export function MenuBar(props) {
 			sortingRef.current.hidden = true;
 		}
 	});
+	const searchParams = new URLSearchParams(window.location.search);
 
 	return (
 		<nav role="menubar">
 			<ul>
+				<li>
+					<input ref={searchRef} type="search" defaultValue={searchParams.get('q') ?? ''} placeholder="Search for …" onEmptied={resetSearch} onKeyDown={handleInputEnter} />
+					<span onClick={handleSearch}><SearchIcon /></span>
+				</li>
 				<li style={{marginLeft: 'auto'}} onClick={() => props.setLayout('tiles')}><TilesIcon /></li>
 				<li onClick={() => props.setLayout('list')}><ListIcon /></li>
 				<li style={{marginRight: 'auto'}} onClick={() => props.setLayout('columns')}><ColumnsIcon /></li>
@@ -68,7 +99,7 @@ export function MenuBar(props) {
 					{renderSortingOptions()}
 				</li>
 				<li className={props.numSelected ? null : "disabled"} onClick={props.cutInodes} title="Cut"><CutIcon /></li>
-				{props.isTrash ? (
+				{settings.is_trash ? (
 					<li className="erase" onClick={confirmEraseTrashFolder} title="Erase trash"><EraseIcon /></li>
 				) : (<>
 					<li className={props.numSelected ? null : "disabled"} onClick={props.copyInodes} title="Copy"><CopyIcon /></li>
