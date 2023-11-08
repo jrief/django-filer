@@ -3,6 +3,8 @@
 }
 
 $trash-background: repeating-linear-gradient(45deg, transparent, transparent 10px, rgb(248, 248, 248) 10px, rgb(248, 248, 248) 20px);
+$follow-folder-border: 2px dashed rgb(192, 192, 192);
+$copied-inode-border: 2px dashed rgb(48, 164, 0);
 
 #content {
 	position: absolute;
@@ -41,18 +43,8 @@ $trash-background: repeating-linear-gradient(45deg, transparent, transparent 10p
 					cursor: not-allowed;
 				}
 
-				&[aria-haspopup="true"] {
-					position: relative;
-					&::after {
-						content: "▾";
-						position: absolute;
-						right: -10px;
-						top: 5px;
-					}
-				}
-
 				&.erase svg {
-					color: rgb(224, 0, 0);
+					color: rgb(192, 0, 0);
 				}
 
 				svg {
@@ -98,6 +90,20 @@ $trash-background: repeating-linear-gradient(45deg, transparent, transparent 10p
 						border-bottom-right-radius: 5px;
 						padding: 0 5px 0 10px;
 					}
+				}
+			}
+
+			[aria-haspopup="true"] {
+				position: relative;
+				&::after {
+					content: "";
+					position: absolute;
+					right: -12px;
+					top: 50%;
+					border: 5px solid transparent;
+					border-top-color: black;
+					width: 0;
+					height: 0;
 				}
 			}
 		}
@@ -176,6 +182,10 @@ $trash-background: repeating-linear-gradient(45deg, transparent, transparent 10p
 				cursor: pointer;
 				border-bottom: 1px solid lightgrey;
 			}
+			&.drag-over {
+				color: rgb(255, 255, 204);
+				background-color: rgb(121, 174, 200);
+			}
 			&.trash {
 				background-image: $trash-background;
 				background-color: transparent;
@@ -239,17 +249,16 @@ $trash-background: repeating-linear-gradient(45deg, transparent, transparent 10p
 				}
 
 				&.copied .inode {
-					outline: 1px dashed #30aa00;
+					border: $copied-inode-border;
 
 					&::after {
 						content: " ";
 						position: absolute;
 						bottom: 5px;
 						right: 5px;
-						color: #30aa00;
-						width: 2em;
-						height: 2em;
-						background-image: url('data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="rgb(48, 170, 0)"><path d="M6.9998 6V3C6.9998 2.44772 7.44752 2 7.9998 2H19.9998C20.5521 2 20.9998 2.44772 20.9998 3V17C20.9998 17.5523 20.5521 18 19.9998 18H16.9998V20.9991C16.9998 21.5519 16.5499 22 15.993 22H4.00666C3.45059 22 3 21.5554 3 20.9991L3.0026 7.00087C3.0027 6.44811 3.45264 6 4.00942 6H6.9998ZM5.00242 8L5.00019 20H14.9998V8H5.00242ZM8.9998 6H16.9998V16H18.9998V4H8.9998V6Z"></path></svg>');
+						width: 32px;
+						height: 32px;
+						background-image: url('data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="rgb(48, 164, 0)"><path d="M6.9998 6V3C6.9998 2.44772 7.44752 2 7.9998 2H19.9998C20.5521 2 20.9998 2.44772 20.9998 3V17C20.9998 17.5523 20.5521 18 19.9998 18H16.9998V20.9991C16.9998 21.5519 16.5499 22 15.993 22H4.00666C3.45059 22 3 21.5554 3 20.9991L3.0026 7.00087C3.0027 6.44811 3.45264 6 4.00942 6H6.9998ZM5.00242 8L5.00019 20H14.9998V8H5.00242ZM8.9998 6H16.9998V16H18.9998V4H8.9998V6Z"></path></svg>');
 						background-repeat: no-repeat;
 					}
 				}
@@ -382,7 +391,7 @@ $trash-background: repeating-linear-gradient(45deg, transparent, transparent 10p
 			}
 
 			&.selected:nth-child(n) .inode {
-				outline: 1px dashed darken(lightgoldenrodyellow, 50%);
+				outline: 1px dotted darken(lightgoldenrodyellow, 50%);
 				background-color: lightgoldenrodyellow;
 			}
 		}
@@ -514,17 +523,19 @@ $trash-background: repeating-linear-gradient(45deg, transparent, transparent 10p
 					box-sizing: border-box;
 
 					&.parent {
-						border-top: 2px solid grey;
-						border-left: 2px solid grey;
-						border-bottom: 2px solid grey;
+						border-top: $follow-folder-border;
+						border-left: $follow-folder-border;
+						border-bottom: $follow-folder-border;
 						border-top-left-radius: 5px;
 						border-bottom-left-radius: 5px;
 						&::after {
 							position: absolute;
-							right: 10px;
-							content: "➧";
-							color: grey;
-							font-size: 36px;
+							right: 0;
+							content: " ";
+							width: 32px;
+							height: 32px;
+							background-image: url('data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="rgb(192, 192, 192)"><path d="M13.1714 12.0007L8.22168 7.05093L9.63589 5.63672L15.9999 12.0007L9.63589 18.3646L8.22168 16.9504L13.1714 12.0007Z"></path></svg>');
+							background-repeat: no-repeat;
 						}
 					}
 

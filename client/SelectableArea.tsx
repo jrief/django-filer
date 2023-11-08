@@ -1,5 +1,4 @@
-import React, {forwardRef, useContext, useEffect, useImperativeHandle, useRef, useState} from 'react';
-import {InodeList} from './InodeList';
+import React, {useContext, useRef, useState} from 'react';
 import {FolderSettings} from "./FolderSettings";
 
 
@@ -21,13 +20,23 @@ function SelectRectangle(props) {
 
 export const SelectableArea = (props) => {
 	const settings = useContext(FolderSettings);
-	const {folderId, clearClipboard, layout} = props;
+	const {folderId, deselectAll} = props;
 	const areaRef = useRef(null);
 	const [activeRect, setActiveRect] = useState(null);
 	const [clickHandler, setClickHandler] = useState(null);
 
 	const selectionStart = (event) => {
-		if (event.target === areaRef.current || event.target.parentElement === areaRef.current) {
+		let element = event.target;
+		while (element) {
+			if (element.hasAttribute('data-id')) {
+				element = null;
+				break;
+			}
+			if (element === areaRef.current)
+				break;
+			element = element.parentElement;
+		}
+		if (element) {
 			const areaRect = areaRef.current.getBoundingClientRect();
 			const rectangle = {
 				startX: event.clientX,
@@ -40,8 +49,7 @@ export const SelectableArea = (props) => {
 			setActiveRect(rectangle);
 			setClickHandler(window.setTimeout(() => {
 				selectionDiscard();
-				// props.deselectAll();
-				props.children;
+				deselectAll();
 				setClickHandler(null);
 			}, 250));
 		} else {
@@ -100,7 +108,7 @@ export const SelectableArea = (props) => {
 			}
 		}
 		if (elements.length) {
-			clearClipboard();
+			// clearClipboard();
 		}
 		selectionDiscard();
 	};

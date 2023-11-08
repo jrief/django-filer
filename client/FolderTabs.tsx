@@ -1,5 +1,5 @@
 import {useDroppable} from '@dnd-kit/core';
-import React, {useContext, useTransition} from 'react';
+import React, {forwardRef, useContext, useImperativeHandle, useState, useTransition} from 'react';
 import CloseIcon from './icons/close.svg';
 import PinIcon from './icons/pin.svg';
 import RecycleIcon from './icons/recycle.svg';
@@ -9,15 +9,16 @@ import {FolderSettings} from "./FolderSettings";
 
 
 function FolderTab(props) {
+	const settings = useContext(FolderSettings);
+	const {folder, isSearchResult} = props;
 	const [isPending, startTransition] = useTransition();
-	const {folder, activeFolderId} = props;
 	const {
 		isOver,
 		setNodeRef,
 	} = useDroppable({
 		id: `tab:${folder.id}`,
 	});
-	const isActive = folder.id === activeFolderId;
+	const isActive = folder.id === settings.folder_id;
 
 	function togglePin(event) {
 		props.togglePin(this.id);
@@ -27,7 +28,7 @@ function FolderTab(props) {
 
 	function cssClasses(folder) {
 		const classes = [];
-		if (isActive) {
+		if (isActive && !isSearchResult) {
 			classes.push('active');
 		}
 		if (folder.is_trash) {
@@ -67,9 +68,14 @@ function FolderTab(props) {
 	);
 }
 
-export function FolderTabs(props) {
+export const FolderTabs = forwardRef((props: any, ref) => {
 	const settings = useContext(FolderSettings);
-	const {favoriteFolders, setFavoriteFolders, activeFolderId} = props;
+	const {isSearchResult} = props;
+	const [favoriteFolders, setFavoriteFolders] = useState(settings.favorite_folders);
+
+	useImperativeHandle(ref, () => ({
+		setFavoriteFolders: setFavoriteFolders,
+	}));
 
 	async function togglePin(pinnedId) {
 		const togglePinUrl = `${settings.base_url}${settings.folder_id}/toggle_pin`;
@@ -94,17 +100,26 @@ export function FolderTabs(props) {
 		}
 	}
 
+	// if (isSearchResult) return (
+	// 	<ul className="folder-tabs">
+	// 		<li className="active">Search results</li>
+	// 	</ul>
+	// );
+
+	console.log('render FolderTabs');
+
 	return (
 		<ul className="folder-tabs">
 			{settings.parent_url ? <li><a href={settings.parent_url}><UpIcon /></a></li> : null}
+			{isSearchResult ? <li className="active">Search results</li> : null}
 			{favoriteFolders.map(folder =>
 				<FolderTab
 					key={folder.id}
 					folder={folder}
-					activeFolderId={activeFolderId}
 					togglePin={togglePin}
+					isSearchResult={isSearchResult}
 				/>
 			)}
 		</ul>
 	);
-}
+});

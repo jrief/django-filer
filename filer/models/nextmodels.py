@@ -196,6 +196,15 @@ class NextFolder(InodeModel):
             inode.copy_to(obj, owner=obj.owner)
         return obj
 
+    def validate_constraints(self):
+        super().validate_constraints()
+        parent = self.parent
+        while parent is not None:
+            if parent.id == self.id:
+                msg = "Parent folder can not be a descendant of the current folder"
+                raise ValidationError(msg)
+            parent = parent.parent
+
 
 def mimetype_validator(value):
     if not mimetypes.guess_extension(value):

@@ -12,24 +12,23 @@ import {FolderSettings} from './FolderSettings';
 
 export const InodeList = forwardRef((props: any, ref) => {
 	const settings = useContext(FolderSettings);
-	const {folderId, setCurrentFolder, layout} = props;
+	const {folderId, previousFolderId, setCurrentFolder, menuBarRef, layout} = props;
 	const [inodes, setInodes] = useState([]);
 	const [lastSelectedInode, setSelectedInode] = useState(-1);
+	const [searchQuery, setSearchQuery] = useState(() => {
+		const params = new URLSearchParams(window.location.search);
+		return params.get('q');
+	});
 
 	useEffect(() => {
 		fetchInodes();
-	}, []);
+	}, [searchQuery]);
 
 	useImperativeHandle(ref, () => ({
 		inodes: inodes,
-		setInodes: inodes => {
-			console.log('setInodes');
-			setInodes(inodes);
-		},
-		deselectInodes: () => {
-			console.log('deselectInodes');
-			deselectInodes();
-		},
+		setInodes: setInodes,
+		deselectInodes: deselectInodes,
+		setSearchQuery: setSearchQuery,
 		async fetchInodes() {
 			await fetchInodes();
 		},
@@ -39,7 +38,8 @@ export const InodeList = forwardRef((props: any, ref) => {
 	}));
 
 	async function fetchInodes() {
-		const fetchInodesUrl = `${settings.base_url}${folderId}/fetch`;
+		const params = new URLSearchParams({q: searchQuery});
+		const fetchInodesUrl = `${settings.base_url}${folderId}/fetch${searchQuery ? `?${params.toString()}` : ''}`;
 		const response = await fetch(fetchInodesUrl);
 		if (response.ok) {
 			const body = await response.json();
@@ -77,7 +77,6 @@ export const InodeList = forwardRef((props: any, ref) => {
 	function selectInode(event: PointerEvent) {
 		if (this.disabled)
 			return;
-		setCurrentFolder(folderId);
 		let modifier;
 		if (event.detail === 2) {
 			// double click
@@ -112,40 +111,39 @@ export const InodeList = forwardRef((props: any, ref) => {
 				modifier = f => ({...f, selected: f.id === this.id});
 			}
 			if (!this.selected) {
-				// remember the last selected inode for shift-click
+				// remember the last selected inode for upcoming shift-click
 				setSelectedInode(inodes.findIndex(inode => inode.id === this.id));
 			}
 		}
-		setInodes(inodes.map((f, k) => ({...modifier(f, k), cutted: false, copied: false})));
-		//clearClipboard();
+		const modifiedInodes = inodes.map((f, k) => ({...modifier(f, k), cutted: false, copied: false}));
+		setCurrentFolder(folderId);
+		setInodes(modifiedInodes);
+		menuBarRef.current.setSelected(modifiedInodes.filter(inode => inode.selected));
 	}
 
 	function deselectInodes() {
-		if (inodes.find(inode => inode.selected)) {
-			setInodes(inodes.map(inode => ({...inode, selected: false})));
+		if (inodes.find(inode => inode.selected || inode.dragged)) {
+			setInodes(inodes.map(inode => ({...inode, selected: false, dragged: false})));
 		}
 	}
 
-	function changeInode(newInode, persist?: boolean) {
-		const updateInodeUrl = `${settings.base_url}/${folderId}/update`;
-		if (persist && newInode.dirty) {
-			fetch(updateInodeUrl, {
-				method: 'POST',
-				headers: {
-					'Content-Type': 'application/json',
-					'X-CSRFToken': settings.csrf_token,
-				},
-				body: JSON.stringify(newInode),
-			}).then(async response => {
-				if (response.ok) {
-					const body = await response.json();
-					setInodes(inodes.map(inode => inode.id === body['new_inode'].id ? body['new_inode'] : inode));
-				}
-			});
-		}
-		if (inodes.findIndex(inode => inode.id === newInode.id && inode.name !== newInode.name) !== -1) {
-			setInodes(inodes.map(inode => inode.id === newInode.id ? {...newInode, dirty: true} : inode));
-		}
+	function updateInode(newInode) {
+		fetch(newInode.update_url, {
+			method: 'POST',
+			headers: {
+				'Content-Type': 'application/json',
+				'X-CSRFToken': settings.csrf_token,
+			},
+			body: JSON.stringify(newInode),
+		}).then(async response => {
+			if (response.ok) {
+				const body = await response.json();
+				setInodes(inodes.map(inode => inode.id === body['new_inode'].id ? body['new_inode'] : inode));
+			}
+		});
+		// if (inodes.findIndex(inode => inode.id === newInode.id && inode.name !== newInode.name) !== -1) {
+		// 	setInodes(inodes.map(inode => inode.id === newInode.id ? {...newInode, dirty: true} : inode));
+		// }
 	}
 
 	const deactivateInodes = (event: SyntheticEvent) => {
@@ -179,8 +177,8 @@ export const InodeList = forwardRef((props: any, ref) => {
 			</li>
 			) : null}
 			{inodes.map(inode => inode.is_folder
-			? <Folder key={inode.id} {...inode} {...props} selectInode={selectInode} changeInode={changeInode} isParent={props.previousFolder === inode.id} />
-			: <File key={inode.id} {...inode} {...props} selectInode={selectInode} changeInode={changeInode} />
+			? <Folder key={inode.id} {...inode} {...props} selectInode={selectInode} updateInode={updateInode} isParent={previousFolderId === inode.id} />
+			: <File key={inode.id} {...inode} {...props} selectInode={selectInode} updateInode={updateInode} />
 			)}
 		</ul>
 	)

@@ -1,5 +1,6 @@
-import React, {useState} from 'react';
+import React, {useContext, useState} from 'react';
 import {useDraggable, useDroppable} from '@dnd-kit/core';
+import {FolderSettings} from './FolderSettings';
 
 
 export function Inode(props) {
@@ -66,7 +67,9 @@ export function Inode(props) {
 
 
 export function ListItem(props) {
+	const settings = useContext(FolderSettings);
 	const [focusHandler, setFocusHandler] = useState(null);
+	const [name, setName] = useState(props.name);
 
 	function swallowEvent(event) {
 		event.stopPropagation();
@@ -89,10 +92,12 @@ export function ListItem(props) {
 	}
 
 	function changeName(event) {
-		if (event.target.value !== props.name) {
-			props.changeInode({...props, name: event.target.value});
-		} else if (event.type === 'blur') {
-			props.changeInode(props, true);
+		setName(event.target.value);
+	}
+
+	function updateName(event) {
+		if (name !== props.name) {
+			props.updateInode({...props, name: name});
 		}
 	}
 
@@ -102,10 +107,10 @@ export function ListItem(props) {
 				<figure>
 					<img src={props.thumbnail_url} />
 					<figcaption>
-						{!props.settings || props.settings.is_trash ? (
+						{settings.is_trash ? (
 						<span>{props.name}</span>
 						) : (
-						<textarea name={`inode-${props.id}`} value={props.name} onClick={swallowEvent} onFocus={handleFocus} onChange={changeName} onBlur={changeName}></textarea>
+						<textarea name={`inode-${props.id}`} value={name} onClick={swallowEvent} onFocus={handleFocus} onChange={changeName} onBlur={updateName}></textarea>
 						)}
 					</figcaption>
 				</figure>
@@ -116,10 +121,10 @@ export function ListItem(props) {
 					<img src={props.thumbnail_url} />
 				</div>
 				<div>
-				{!props.settings || props.settings.is_trash ? (
+				{settings.is_trash ? (
 					props.name
 				) : (
-					<textarea name={`inode-${props.id}`} value={props.name} onClick={swallowEvent} onChange={changeName} onFocus={handleFocus} onBlur={changeName}></textarea>
+					<textarea name={`inode-${props.id}`} value={name} onClick={swallowEvent} onFocus={handleFocus} onChange={changeName} onBlur={updateName}></textarea>
 				)}
 				</div>
 				<div>
@@ -137,10 +142,10 @@ export function ListItem(props) {
 					<img src={props.thumbnail_url} />
 				</div>
 				<div>
-				{!props.settings || props.settings.is_trash ? (
+				{settings.is_trash ? (
 					props.name
 				) : (
-					<textarea name={`inode-${props.id}`} value={props.name} onClick={swallowEvent} onChange={changeName} onFocus={handleFocus} onBlur={changeName}></textarea>
+					<textarea name={`inode-${props.id}`} value={name} onClick={swallowEvent} onFocus={handleFocus} onChange={changeName} onBlur={updateName}></textarea>
 				)}
 				</div>
 			</>);
