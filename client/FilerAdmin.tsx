@@ -18,18 +18,17 @@ import {DraggedInodes, InodeList} from './InodeList';
 import {DroppableArea} from './Droppable';
 import DownloadIcon from './icons/download.svg';
 import TrashIcon from './icons/trash.svg';
+import MoreVerticalIcon from './icons/more-vertical.svg';
 
 
 export default function FilerAdmin(props) {
-	const settings = useContext(FolderSettings); console.log(settings);
+	const settings = useContext(FolderSettings);
 	const menuBarRef = useRef(null);
 	const folderTabsRef = useRef(null);
 	const uploaderRef = useRef(null);
 	const inodesRefs = Object.fromEntries(settings.ancestors.map(id => [id, useRef(null)]));
 	const overlayRef = useRef(null);
 	const downloadLinkRef = useRef(null);
-	//const [clipboard, setClipboard] = useClipboard();
-	//const [currentInodeRef, setCurrentInodeRef] = useState(inodesRefs[settings.folder_id]);
 	const [currentFolderId, setCurrentFolderId] = useState(settings.folder_id);
 	const [layout, setLayout] = useLayout('tiles');
 	const [activeInode, setActiveInode] = useState(null);
@@ -48,74 +47,6 @@ export default function FilerAdmin(props) {
 		height: 'fit-content',
 		width: 'fit-content',
 	};
-
-	// window.addEventListener('keydown', event => {
-	// 	if (event.key === 'Escape') {
-	// 		deselectAll(event);
-	// 	} else if (event.key === 'c' && (event.ctrlKey || event.metaKey || event.altKey)) {
-	// 		copyInodes();
-	// 	} else if (event.key === 'x' && (event.ctrlKey || event.metaKey || event.altKey)) {
-	// 		cutInodes();
-	// 	} else if (event.key === 'v' && (event.ctrlKey || event.metaKey || event.altKey)) {
-	// 		pasteInodes();
-	// 	} else if (['Backspace', 'Delete'].includes(event.key)) {
-	// 		deleteInodes();
-	// 	}
-	// });
-	// useEffect(() => {
-	// 	console.log('useEffect', searchQuery);
-	// 	fetchInodes();
-	// }, [searchQuery]);
-	//initializeAncestors();
-	// useCallback(() => {
-	// 	console.log('useCallback', searchQuery);
-	// 	initializeAncestors();
-	// }, [searchQuery]);
-
-	// useEffect(() => {
-	// 	initializeAncestors();
-	// }, []);
-
-	// function getPrimaryFolderId() {
-	// 	const found = window.location.pathname.match(/^.+\/([0-9a-f]{8}(-[0-9a-f]{4}){3}-[0-9a-f]{12})\/.+$/);
-	// 	if (!found)
-	// 		throw new Error(`Invalid URL for django-filer: ${window.location.pathname}`);
-	// 	return found[1];
-	// }
-
-	// async function initializeAncestors() {
-	// 	const ancestors = [];
-	// 	let fetch_inodes_url = settings.fetch_inodes_url;
-	// 	console.log('fetch_inodes_url', fetch_inodes_url);
-	// 	while (fetch_inodes_url) {
-	// 		const response = await fetch(fetch_inodes_url);
-	// 		if (response.ok) {
-	// 			const body = await response.json();
-	// 			ancestors.push({
-	// 				folder: body.folder,
-	// 				inodes: body.inodes,
-	// 			});
-	// 			fetch_inodes_url = body.fetch_parent_url;
-	// 		} else {
-	// 			console.error(response);
-	// 			return;
-	// 		}
-	// 	}
-	// 	setAncestors(ancestors);
-	//
-	// 	ancestors.map(ancestor => ({
-	// 		folder: ancestor.folder,
-	// 		inodes: ancestor.inodes.map(inode => {
-	// 			const entry = clipboard.find(entry => entry.id === inode.id);
-	// 			return entry ? {...inode, cutted: entry.cutted, copied: entry.copied} : inode;
-	// 		}),
-	// 	}));
-	// }
-
-	// function initializeCurrentFolder() {
-	//  	const params = new URLSearchParams(window.location.search);
-	// 	return params.get('q') ? 'search-result' : primaryFolderId;
-	// }
 
 	function modifyMovement(args) {
 		const {transform} = args;
@@ -138,20 +69,6 @@ export default function FilerAdmin(props) {
 		};
 	}
 
-	// function setInodes(folderId, inodes, modifier=inode => ({...inode, selected: false})) {
-	// 	if (folderId !== currentFolderId) {
-	// 		setCurrentFolder(folderId);
-	// 	}
-	// 	setAncestors(ancestors.map(ancestor => {
-	// 		return {
-	// 			folder: ancestor.folder,
-	// 			inodes: ancestor.folder === folderId
-	// 				? inodes
-	// 				: ancestor.inodes.map(inode => modifier(inode)),
-	// 		};
-	// 	}));
-	// }
-
 	function setCurrentFolder(folderId) {
 		if (folderId !== currentFolderId) {
 			deselectAll();
@@ -160,166 +77,11 @@ export default function FilerAdmin(props) {
 	}
 
 	function deselectAll(event?) {
-		console.log('deselectAll');
 		Object.entries(inodesRefs).forEach(([folderId, inodeRef]) => {
 			inodeRef.current?.deselectInodes();
 		});
 		menuBarRef.current?.setSelected([]);
 	}
-
-	// function searchForInodes(query: string) {
-	// 	const params = new URLSearchParams({q: query});
-	// 	const searchUrl = `${settings.search_inodes_url}?${params.toString()}`;
-	// 	fetch(searchUrl).then(async response => {
-	// 		if (response.ok) {
-	// 			const body = await response.json();
-	// 			setCurrentFolder('search-result');
-	// 			setAncestors([{
-	// 				folder: 'search-result',
-	// 				inodes: body.inodes,
-	// 			}]);
-	// 		} else {
-	// 			console.error(response);
-	// 		}
-	// 	});
-	// }
-
-	// function addFolder() {
-	// 	const folderName = window.prompt("Enter folder name");
-	// 	if (!folderName)
-	// 		return;
-	// 	const addFolderUrl = `${settings.base_url}${settings.folder_id}/add_folder`;
-	// 	fetch(addFolderUrl, {
-	// 		method: 'POST',
-	// 		headers: {
-	// 			'Content-Type': 'application/json',
-	// 			'X-CSRFToken': settings.csrf_token,
-	// 		},
-	// 		body: JSON.stringify({
-	// 			name: folderName,
-	// 		}),
-	// 	}).then(async response => {
-	// 		const inodes = getCurrentInodes();
-	// 		if (response.status === 200) {
-	// 			const body = await response.json();
-	// 			setInodes(primaryFolderId, [...inodes, body.new_folder]);
-	// 		} else {
-	// 			console.error(response);
-	// 		}
-	// 	});
-	// }
-
-	// function copyInodes() {
-	// 	const inodes = getCurrentInodes();
-	// 	setClipboard(inodes.filter(inode => inode.selected).map(inode => ({...inode, selected: false, copied: true})));
-	// 	setInodes(currentFolderId, inodes.map(inode => ({...inode, selected: false, copied: inode.selected})));
-	// }
-	//
-	// function cutInodes() {
-	// 	const inodes = getCurrentInodes();
-	// 	setClipboard(inodes.filter(inode => inode.selected).map(inode => ({...inode, selected: false, cutted: true})));
-	//
-	// 	setInodes(currentFolderId, inodes.map(inode => ({...inode, selected: false, cutted: inode.selected})));
-	// }
-	//
-	// function pasteInodes() {
-	// 	let fetchUrl;
-	// 	let inodes = clipboard.filter(inode => inode.copied).map(inode => inode.id);
-	// 	if (inodes.length) {
-	// 		fetchUrl = settings.copy_inodes_url;
-	// 	} else {
-	// 		inodes = clipboard.filter(inode => inode.cutted).map(inode => inode.id);
-	// 		if (inodes.length) {
-	// 			fetchUrl = settings.move_inodes_url;
-	// 		}
-	// 	}
-	// 	clearClipboard();
-	// 	if (!fetchUrl)
-	// 		return;
-	//
-	// 	if (searchQuery) {
-	// 		const params = new URLSearchParams({q: searchQuery});
-	// 		fetchUrl = `${fetchUrl}?${params.toString()}`;
-	// 	}
-	// 	fetch(fetchUrl, {
-	// 		method: 'POST',
-	// 		headers: {
-	// 			'Content-Type': 'application/json',
-	// 			'X-CSRFToken': settings.csrf_token,
-	// 		},
-	// 		body: JSON.stringify({inodes}),
-	// 	}).then(handleResponse);
-	// }
-	//
-	// function deleteInodes() {
-	// 	clearClipboard();
-	// 	const inodes = getCurrentInodes().filter(inode => inode.selected).map(inode => inode.id);
-	// 	let fetchUrl = settings.delete_inodes_url;
-	// 	if (searchQuery) {
-	// 		const params = new URLSearchParams({q: searchQuery});
-	// 		fetchUrl = `${fetchUrl}?${params.toString()}`;
-	// 	}
-	// 	fetch(fetchUrl, {
-	// 		method: 'POST',
-	// 		headers: {
-	// 			'Content-Type': 'application/json',
-	// 			'X-CSRFToken': settings.csrf_token,
-	// 		},
-	// 		body: JSON.stringify({inodes}),
-	// 	}).then(handleResponse);
-	// }
-	//
-	// async function eraseTrashFolder() {
-	// 	setClipboard([]);
-	// 	const response = await fetch(settings.erase_trash_folder_url, {
-	// 		method: 'DELETE',
-	// 		headers: {
-	// 			'X-CSRFToken': settings.csrf_token,
-	// 		},
-	// 	});
-	// 	if (response.status === 200) {
-	// 		const data = await response.json();
-	// 		window.location.assign(data.success_url);
-	// 	}
-	// }
-	//
-	// async function togglePin(pinnedId) {
-	// 	const response = await fetch(settings.toggle_pin_url, {
-	// 		method: 'POST',
-	// 		headers: {
-	// 			'Content-Type': 'application/json',
-	// 			'X-CSRFToken': settings.csrf_token,
-	// 		},
-	// 		body: JSON.stringify({
-	// 			pinned_id: pinnedId
-	// 		}),
-	// 	});
-	// 	if (response.status === 200) {
-	// 		const data = await response.json();
-	// 		if (data.success_url) {
-	// 			// unpinned current folder, redirect to success_url
-	// 			window.location.assign(data.success_url);
-	// 			return;
-	// 		}
-	// 		setFavoriteFolders(data.favorite_folders);
-	// 	}
-	// }
-
-	// function fetchInodes() {
-	// 	let fetchUrl = settings.refresh_url;
-	// 	if (searchQuery) {
-	// 		const params = new URLSearchParams({q: searchQuery});
-	// 		fetchUrl = `${fetchUrl}?${params.toString()}`;
-	// 	}
-	// 	fetch(fetchUrl).then(handleResponse);
-	// }
-
-	// function switchLayout(newLayout: string) {
-	// 	setLayout(newLayout);
-	// 	if (newLayout !== layout && newLayout === 'columns') {
-	// 		fetchInodes();
-	// 	}
-	// }
 
 	function downloadFiles(inodes) {
 		inodes.forEach(inode => {
@@ -362,10 +124,6 @@ export default function FilerAdmin(props) {
 				return;
 			}
 			let fetchUrl = `${settings.base_url}${settings.folder_id}/${what === 'discard' ? 'delete' : 'move'}`;
-			// if (searchQuery) {
-			// 	const params = new URLSearchParams({q: searchQuery});
-			// 	fetchUrl = `${fetchUrl}?${params.toString()}`;
-			// }
 			const response = await fetch(fetchUrl, {
 				method: 'POST',
 				headers: {
@@ -378,7 +136,6 @@ export default function FilerAdmin(props) {
 				}),
 			});
 			if (response.ok) {
-				console.log(response);
 				const body = await response.json();
 				if (body.inodes && inodesRefs[targetFolderId]?.current) {
 					inodesRefs[targetFolderId].current.setInodes(body.inodes);
@@ -405,14 +162,6 @@ export default function FilerAdmin(props) {
 		setDraggedInodes([]);
 	}
 
-	function getCurrentInodes() {
-		return inodesRefs[currentFolderId].current?.inodes ?? [];
-	}
-
-	function getSelectedInodes() {
-		return getCurrentInodes().filter(inode => inode.selected);
-	}
-
 	function renderWorkArea() {
 		if (settings.is_trash) return (
 			<div className={`work-area ${layout}`}>
@@ -428,25 +177,31 @@ export default function FilerAdmin(props) {
 			</div>
 		);
 
-		// if (searchQuery) return (
-		// 	<div className={`work-area ${layout}`}>
-		// 		<SelectableArea folderId="search-result" inodes={ancestors.find(ancestor => ancestor.folder === 'search-result').inodes} layout={layout} />
-		// 	</div>
-		// );
-
-		let previousFolderId = null;
-		return (
-			<div className={`work-area ${layout}`}>{
-				(layout === 'columns' && !isSearchResult ? settings.ancestors : [settings.ancestors[0]]).map(folderId => {
-					const snippet = (
+		let incomplete = false;
+		function renderAncestors() {
+			const ancestors = [settings.ancestors[0]];
+			if (layout === 'columns' && !isSearchResult && settings.workAreaRect) {
+				const maxNumAncestors = Math.min(
+					Math.floor(settings.workAreaRect.width / 350),
+					settings.ancestors.length,
+				);
+				for (let i = 1; i < maxNumAncestors; i++) {
+					ancestors.push(settings.ancestors[i]);
+				}
+				incomplete = ancestors.length < settings.ancestors.length;
+			}
+			let previousFolderId = null;
+			return ancestors.map(folderId => {
+				const snippet = (
 					<FileUploader
 						key={folderId}
 						ref={folderId === settings.folder_id ? uploaderRef : null}
 						folderId={folderId}
 						handleUpload={id => inodesRefs[id].current.fetchInodes()}
 					>
-						<SelectableArea folderId={folderId} deselectAll={deselectAll}>
-							<DroppableArea id={`column:${folderId}`} className="column-droppable" currentId={`column:${currentFolderId}`} >
+						<SelectableArea folderId={folderId} deselectAll={deselectAll} inodeRef={inodesRefs[folderId]}>
+							<DroppableArea id={`column:${folderId}`} className="column-droppable"
+										   currentId={`column:${currentFolderId}`}>
 								<InodeList
 									ref={inodesRefs[folderId]}
 									folderId={folderId}
@@ -458,11 +213,17 @@ export default function FilerAdmin(props) {
 							</DroppableArea>
 						</SelectableArea>
 					</FileUploader>
-					);
-					previousFolderId = folderId;
-					return snippet;
-				})
-			}</div>
+				);
+				previousFolderId = folderId;
+				return snippet;
+			});
+		}
+
+		return (
+			<div className={`work-area ${layout}`}>
+				{renderAncestors()}
+				{incomplete ? <div className="trimmed-column"><MoreVerticalIcon/></div> : null}
+			</div>
 		);
 	}
 
@@ -479,6 +240,7 @@ export default function FilerAdmin(props) {
 	}
 
 	console.log("FilerAdmin", currentFolderId);
+
 	return (<>
 		<MenuBar
 			ref={menuBarRef}

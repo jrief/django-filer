@@ -31,7 +31,7 @@ export function XXXDroppable(props) {
 
 
 export function DroppableArea(props) {
-	const {id, className, children, dragging} = props;
+	const {id, className, currentId, dragging, children} = props;
 	const {
 		isOver,
 		over,
@@ -45,12 +45,13 @@ export function DroppableArea(props) {
 		if (dragging) {
 			classes.push('dragging');
 		}
-		if (isOver && over.id !== props.currentId) {
-			console.log('DroppableArea', id, props.currentId);
+		if (isOver && over.id !== currentId) {
 			classes.push('drag-over');
 		}
 		return classes.join(' ');
 	}
+
+	console.log('DroppableArea', id, currentId);
 
 	return (
 		<div ref={setNodeRef} className={cssClasses()}>

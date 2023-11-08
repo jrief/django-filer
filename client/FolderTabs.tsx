@@ -41,7 +41,7 @@ function FolderTab(props) {
 	}
 
 	function selectTab(event) {
-		if (!isActive) {
+		if (!isActive || isSearchResult) {
 			startTransition(() => {
 				window.location.assign(folder.change_url);
 			});
@@ -49,13 +49,13 @@ function FolderTab(props) {
 	}
 
 	if (folder.is_root) return (
-		<li ref={setNodeRef} className={cssClasses(folder)} onClick={() => !isActive ? window.location.assign(folder.change_url) : {}} title="Root folder">
+		<li ref={setNodeRef} className={cssClasses(folder)} onClick={selectTab} title="Root folder">
 			<RootIcon />
 		</li>
 	);
 
 	if (folder.is_trash) return (
-		<li ref={setNodeRef} className={cssClasses(folder)} onClick={() => !isActive ? window.location.assign(folder.change_url) : {}} title="Trash folder">
+		<li ref={setNodeRef} className={cssClasses(folder)} onClick={selectTab} title="Trash folder">
 			<RecycleIcon />
 		</li>
 	);
@@ -99,12 +99,6 @@ export const FolderTabs = forwardRef((props: any, ref) => {
 			setFavoriteFolders(data.favorite_folders);
 		}
 	}
-
-	// if (isSearchResult) return (
-	// 	<ul className="folder-tabs">
-	// 		<li className="active">Search results</li>
-	// 	</ul>
-	// );
 
 	console.log('render FolderTabs');
 

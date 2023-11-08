@@ -320,17 +320,14 @@ $copied-inode-border: 2px dashed rgb(48, 164, 0);
 			}
 		}
 
+		.trimmed-column {
+			width: 20px;
+			display: flex;
+		}
+
 		.selectable-area {
 			position: absolute;
 			top: 0; right: 0; bottom: 0; left: 0;
-
-			&.trash {
-				.inode-list, li {
-					background-image: $trash-background;
-					background-color: transparent;
-					background-attachment: fixed;
-				}
-			}
 
 			.select-rectangle {
 				position: absolute;
@@ -343,6 +340,12 @@ $copied-inode-border: 2px dashed rgb(48, 164, 0);
 		margin: 0;
 		overflow-y: scroll;
 		background-color: ghostwhite;
+
+		&.trash, &.trash > li {
+			background-image: $trash-background;
+			background-color: transparent;
+			background-attachment: fixed;
+		}
 
 		> li {
 			display: block;
@@ -391,8 +394,8 @@ $copied-inode-border: 2px dashed rgb(48, 164, 0);
 			}
 
 			&.selected:nth-child(n) .inode {
-				outline: 1px dotted darken(lightgoldenrodyellow, 50%);
-				background-color: lightgoldenrodyellow;
+				outline: 1px dotted rgb(210, 210, 112);
+				background-color: rgb(250, 250, 210);
 			}
 		}
 	}

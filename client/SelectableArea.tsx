@@ -1,5 +1,5 @@
 import React, {useContext, useRef, useState} from 'react';
-import {FolderSettings} from "./FolderSettings";
+import {FolderSettings} from './FolderSettings';
 
 
 function SelectRectangle(props) {
@@ -20,7 +20,7 @@ function SelectRectangle(props) {
 
 export const SelectableArea = (props) => {
 	const settings = useContext(FolderSettings);
-	const {folderId, deselectAll} = props;
+	const {folderId, deselectAll, inodeRef} = props;
 	const areaRef = useRef(null);
 	const [activeRect, setActiveRect] = useState(null);
 	const [clickHandler, setClickHandler] = useState(null);
@@ -94,22 +94,14 @@ export const SelectableArea = (props) => {
 		activeRect.left += areaRect.x;
 		activeRect.top += areaRect.y;
 		const elements = areaRef.current.querySelectorAll('.inode-list > li');
+		const overlappingInodeIds = [];
 		for (let element of elements) {
 			const elemRect = element.getBoundingClientRect();
 			if (overlaps(elemRect)) {
-				setTimeout(() => {
-					const event = new CustomEvent('click', {
-						bubbles: true,
-						cancelable: false,
-						detail: {selected: true},
-					});
-					element.dispatchEvent(event);
-				}, 0);
+				overlappingInodeIds.push(element.dataset.id);
 			}
 		}
-		if (elements.length) {
-			// clearClipboard();
-		}
+		inodeRef.current.selectMultipleInodes(overlappingInodeIds);
 		selectionDiscard();
 	};
 
@@ -117,20 +109,18 @@ export const SelectableArea = (props) => {
 		setActiveRect(null);
 	}
 
-	function cssClasses() {
-		const classes = ['selectable-area'];
-		if (settings.is_trash) {
-			classes.push('trash');
-		}
-		return classes.join(' ');
-	}
-
 	console.log('SelectableArea', folderId);
 
 	return (
-		<div ref={areaRef} className={cssClasses()} onMouseDown={selectionStart} onMouseMove={selectionExtend} onMouseUp={selectionEnd} onMouseLeave={selectionDiscard}>
+		<div
+			ref={areaRef}
+			className="selectable-area"
+			onMouseDown={selectionStart}
+			onMouseMove={selectionExtend}
+			onMouseUp={selectionEnd}
+			onMouseLeave={selectionDiscard}>
 			{props.children}
 			<SelectRectangle style={activeRect} />
 		</div>
-	)
+	);
 };

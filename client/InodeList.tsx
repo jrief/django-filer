@@ -29,6 +29,7 @@ export const InodeList = forwardRef((props: any, ref) => {
 		setInodes: setInodes,
 		deselectInodes: deselectInodes,
 		setSearchQuery: setSearchQuery,
+		selectMultipleInodes: selectMultipleInodes,
 		async fetchInodes() {
 			await fetchInodes();
 		},
@@ -121,29 +122,32 @@ export const InodeList = forwardRef((props: any, ref) => {
 		menuBarRef.current.setSelected(modifiedInodes.filter(inode => inode.selected));
 	}
 
+	function selectMultipleInodes(selectedInodeIds: Array<string>) {
+		const modifiedInodes = inodes.map(inode => ({...inode, selected: selectedInodeIds.includes(inode.id), cutted: false, copied: false}));
+		setCurrentFolder(folderId);
+		setInodes(modifiedInodes);
+		menuBarRef.current.setSelected(modifiedInodes.filter(inode => inode.selected));
+	}
+
 	function deselectInodes() {
 		if (inodes.find(inode => inode.selected || inode.dragged)) {
 			setInodes(inodes.map(inode => ({...inode, selected: false, dragged: false})));
 		}
 	}
 
-	function updateInode(newInode) {
-		fetch(newInode.update_url, {
+	async function updateInode(newInode) {
+		const response = await fetch(newInode.update_url, {
 			method: 'POST',
 			headers: {
 				'Content-Type': 'application/json',
 				'X-CSRFToken': settings.csrf_token,
 			},
 			body: JSON.stringify(newInode),
-		}).then(async response => {
-			if (response.ok) {
-				const body = await response.json();
-				setInodes(inodes.map(inode => inode.id === body['new_inode'].id ? body['new_inode'] : inode));
-			}
 		});
-		// if (inodes.findIndex(inode => inode.id === newInode.id && inode.name !== newInode.name) !== -1) {
-		// 	setInodes(inodes.map(inode => inode.id === newInode.id ? {...newInode, dirty: true} : inode));
-		// }
+		if (response.ok) {
+			const body = await response.json();
+			setInodes(inodes.map(inode => inode.id === body['new_inode'].id ? body['new_inode'] : inode));
+		}
 	}
 
 	const deactivateInodes = (event: SyntheticEvent) => {
@@ -152,18 +156,18 @@ export const InodeList = forwardRef((props: any, ref) => {
 		}
 	};
 
-	// function cssClasses() {
-	// 	const classes = ['inode-list'];
-	// 	if (isOver && over.id !== `column:${props.currentFolderId}`) {
-	// 		classes.push('drag-over');
-	// 	}
-	// 	return classes.join(' ');
-	// }
+	function cssClasses() {
+		const classes = ['inode-list'];
+		if (settings.is_trash && !searchQuery) {
+			classes.push('trash');
+		}
+		return classes.join(' ');
+	}
 
 	console.log('InodeList', folderId, inodes);
 
 	return (
-		<ul className="inode-list" onClick={deactivateInodes}>
+		<ul className={cssClasses()} onClick={deactivateInodes}>
 			{layout === 'list' ? (
 			<li className="header">
 				<div className="inode">
