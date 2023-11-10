@@ -151,7 +151,12 @@ export const InodeList = forwardRef((props: any, ref) => {
 			const body = await response.json();
 			setInodes(inodes.map(inode => inode.id === body.new_inode.id ? body.new_inode : inode));
 			folderTabsRef.current.setFavoriteFolders(body.favorite_folders);
+		} else if (response.status === 409) {
+			alert(await response.text());
+		} else {
+			console.error(response);
 		}
+		return response.ok;
 	}
 
 	const deactivateInodes = (event: SyntheticEvent) => {
@@ -166,6 +171,19 @@ export const InodeList = forwardRef((props: any, ref) => {
 			classes.push('trash');
 		}
 		return classes.join(' ');
+	}
+
+	function renderInodes() {
+		if (isLoading)
+			return (<li className="status">{gettext("Loading...")}</li>);
+
+		if (inodes.length === 0 && searchQuery)
+			return (<li className="status">{`No match while searching for “${searchQuery}”`}</li>);
+
+		return inodes.map(inode => inode.is_folder
+			? <Folder key={inode.id} {...inode} {...props} selectInode={selectInode} updateInode={updateInode} isParent={previousFolderId === inode.id} />
+			: <File key={inode.id} {...inode} {...props} selectInode={selectInode} updateInode={updateInode} />
+		);
 	}
 
 	console.log('InodeList', folderId, inodes);
@@ -184,10 +202,7 @@ export const InodeList = forwardRef((props: any, ref) => {
 				</div>
 			</li>
 			) : null}
-			{isLoading ? <li className="status">Loading...</li> : inodes.map(inode => inode.is_folder
-			? <Folder key={inode.id} {...inode} {...props} selectInode={selectInode} updateInode={updateInode} isParent={previousFolderId === inode.id} />
-			: <File key={inode.id} {...inode} {...props} selectInode={selectInode} updateInode={updateInode} />
-			)}
+			{renderInodes()}
 		</ul>
 	)
 });

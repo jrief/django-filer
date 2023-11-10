@@ -95,11 +95,13 @@ export function ListItem(props) {
 		setName(event.target.value);
 	}
 
-	function updateName(event) {
+	async function updateName(event) {
 		const enterKey = event.type === 'keydown' && event.key === 'Enter';
 		if (event.type === 'blur' || enterKey) {
 			if (name !== props.name) {
-				props.updateInode({...props, name: name});
+				if (!await props.updateInode({...props, name: name})) {
+					setName(props.name);
+				}
 			}
 			if (enterKey) {
 				event.preventDefault();
