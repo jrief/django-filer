@@ -1,6 +1,12 @@
-import {useState} from 'react';
+import React, {useContext, useRef, useState} from 'react';
+import SearchIcon from './icons/search.svg';
+import {FolderSettings} from './FolderSettings';
+import {useCookie} from './Storage';
 
-export function useSearchParam(key) : [string, (value: string) => any] {
+const useSearchRealm = initial => useCookie('django-filer-search-realm', initial);
+
+
+function useSearchParam(key) : [string, (value: string) => any] {
 	const params = new URLSearchParams(window.location.search);
 	const [value, setValue] = useState(
 		params.get(key) || ''
@@ -25,4 +31,77 @@ export function useSearchParam(key) : [string, (value: string) => any] {
 			setValue(value);
 		},
 	];
+}
+
+
+export function SearchField(props) {
+	const settings = useContext(FolderSettings);
+	const {inodesRefs, setSearchResult} = props;
+	const searchRef = useRef(null);
+	const searchRealmRef = useRef(null);
+	const [searchQuery, setSearchQuery] = useSearchParam('q');
+	const [searchRealm, setSearchRealm] = useSearchRealm('current');
+
+	window.addEventListener('click', event => {
+		if (!searchRealmRef.current?.parentElement?.contains(event.target)) {
+			searchRealmRef.current.setAttribute('aria-expanded', 'false');
+		}
+	});
+
+	function handleSearch(event) {
+		const performSearch = () => {
+			setSearchQuery(searchRef.current.value);
+			const current = inodesRefs[settings.folder_id].current;
+			current.setSearchQuery(searchRef.current.value);
+			setSearchResult(true);
+		};
+		const resetSearch = () => {
+			setSearchQuery('');
+			Object.entries(inodesRefs as React.MutableRefObject<any>).forEach(([folderId, inodeRef]) => {
+				inodeRef.current?.setSearchQuery();
+			});
+			setSearchResult(false);
+		};
+
+		if (event.type === 'change' && searchRef.current.value.length === 0) {
+			// clicked on the X button
+			resetSearch();
+		} else if (event.type === 'keydown' && event.key === 'Enter') {
+			// pressed Enter
+			searchRef.current.value.length === 0 ? resetSearch() : performSearch();
+		} else if (event.type === 'click' && searchRef.current.value.length > 2) {
+			// clicked on the search button
+			performSearch();
+		}
+	}
+
+	function changeSearchRealm(value) {
+		if (value !== searchRealm) {
+			setSearchRealm(value);
+			 Object.entries(inodesRefs as React.MutableRefObject<any>).forEach(([folderId, inodeRef]) => {
+			 	inodeRef.current?.fetchInodes();
+			});
+		}
+	}
+
+	function renderSearchRealmOptions() {
+		const isActive = (value) => searchRealm === value ? 'active' : null;
+
+		return (
+			<ul ref={searchRealmRef} role="combobox" aria-expanded="false">
+				<li onClick={() => changeSearchRealm('current')} className={isActive('current')}>{gettext("From current folder")}</li>
+				<li onClick={() => changeSearchRealm('everywhere')} className={isActive('everywhere')}>{gettext("In all folders")}</li>
+			</ul>
+		)
+	}
+
+	return (<>
+		<input ref={searchRef} type="search" defaultValue={searchQuery} placeholder={gettext("Search for …")} onChange={handleSearch} onKeyDown={handleSearch} />
+		<div>
+			<span className="search-icon" onClick={handleSearch}><SearchIcon /></span>
+			<span className="search-realm" onClick={() => searchRealmRef.current.setAttribute('aria-expanded', searchRealmRef.current.ariaExpanded === 'true' ? 'false': 'true')} aria-haspopup="true" data-tooltip-id="django-filer-tooltip" data-tooltip-content={gettext("Restrict search")}>
+				{renderSearchRealmOptions()}
+			</span>
+		</div>
+	</>);
 }

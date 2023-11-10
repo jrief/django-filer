@@ -34,7 +34,7 @@ $copied-inode-border: 2px dashed rgb(48, 164, 0);
 				width: 32px;
 				height: 32px;
 
-				&:hover:not(.disabled) {
+				&:hover:not(.disabled):not(.search-field) {
 					background-color: #e6e6e6;
 				}
 
@@ -47,6 +47,86 @@ $copied-inode-border: 2px dashed rgb(48, 164, 0);
 					color: rgb(192, 0, 0);
 				}
 
+				&.search-field {
+					display: inline-flex;
+					width: calc(100% - 400px);
+					max-width: 400px;
+
+					> input {
+						width: calc(100% - 48px);
+						min-width: 100px;
+						height: 100%;
+						display: block;
+						margin: 0;
+						padding: 2px 8px;
+						border: 1px solid lightgrey;
+						border-right: none;
+						border-top-left-radius: 5px;
+						border-bottom-left-radius: 5px;
+
+						&:focus-visible {
+							outline: none;
+						}
+
+						& + div {
+							border: 1px solid lightgrey;
+							border-left: none;
+							border-top-right-radius: 5px;
+							border-bottom-right-radius: 5px;
+							padding: 0 5px 0 10px;
+							display: flex;
+
+							span:hover {
+								background-color: lightgrey;
+							}
+
+							.search-icon {
+								margin-right: 15px;
+								svg {
+									transform: scale(0.8);
+								}
+							}
+
+							.search-realm {
+								[role="combobox"] {
+									width: 225px;
+								}
+
+								&::after {
+									right: 2px;
+								}
+							}
+						}
+					}
+
+					&:has(> input:focus-visible) {
+						box-shadow: rgb(50, 150, 250) 0 0 5px;
+					}
+				}
+
+				&.sorting-dropdown {
+					margin-left: auto;
+					margin-right: auto;
+
+					&::after {
+						right: -12px;
+					}
+
+					[role="combobox"] {
+						width: 150px;
+
+						svg {
+							color: grey;
+						}
+						span {
+							margin-left: 40px;
+						}
+						svg + span {
+							margin-left: 10px;
+						}
+					}
+				}
+
 				svg {
 					display: inline-block;
 					width: 30px;
@@ -54,43 +134,6 @@ $copied-inode-border: 2px dashed rgb(48, 164, 0);
 					margin: 1px;
 				}
 
-				&:has(> input) {
-					display: inline-flex;
-					width: calc(100% - 400px);
-					max-width: 400px;
-					svg {
-						transform: scale(0.8);
-					}
-				}
-
-				&:has(> input:focus-visible) {
-					box-shadow: rgb(50, 150, 250) 0 0 5px;
-				}
-
-				input[type="search"] {
-					width: calc(100% - 48px);
-					min-width: 100px;
-					height: 100%;
-					display: block;
-					margin: 0;
-					padding: 2px 8px;
-					border: 1px solid lightgrey;
-					border-right: none;
-					border-top-left-radius: 5px;
-					border-bottom-left-radius: 5px;
-
-					&:focus-visible {
-						outline: none;
-					}
-
-					& + span {
-						border: 1px solid lightgrey;
-						border-left: none;
-						border-top-right-radius: 5px;
-						border-bottom-right-radius: 5px;
-						padding: 0 5px 0 10px;
-					}
-				}
 			}
 
 			[aria-haspopup="true"] {
@@ -98,59 +141,49 @@ $copied-inode-border: 2px dashed rgb(48, 164, 0);
 				&::after {
 					content: "";
 					position: absolute;
-					right: -12px;
-					top: 50%;
+					top: calc(50% - 2px);
 					border: 5px solid transparent;
 					border-top-color: black;
 					width: 0;
 					height: 0;
 				}
 			}
-		}
 
-		.sorting-options {
-			position: absolute;
-			z-index: 1;
-			background-color: white;
-			top: 100%;
-			left: calc(32px - 150px / 2);
-			width: 150px;
-			border: 1px solid grey;
-			border-radius: 3px;
-			box-shadow: 0 0 5px grey;
-			display: flex;
-			flex-direction: column;
-			margin: 0;
-			padding: 3px 0;
-
-			&[hidden] {
-				display: none;
-			}
-
-			li {
-				padding: 0 10px;
-				width: auto;
-				cursor: pointer;
+			[role="combobox"] {
+				position: absolute;
+				z-index: 1;
+				background-color: white;
+				top: 100%;
+				left: calc(32px - 150px / 2);
+				border: 1px solid grey;
+				border-radius: 3px;
+				box-shadow: 0 0 5px grey;
 				display: flex;
-				line-height: 32px;
-				font-size: 16px;
-				&.active {
-					background-color: rgb(255, 255, 204);
-					&::after {
-						content: "✔";
-						position: absolute;
-						right: 10px;
-					}
+				flex-direction: column;
+				margin: 0;
+				padding: 3px 0;
+
+				&[aria-expanded="false"] {
+					display: none;
 				}
 
-				svg {
-					color: grey;
-				}
-				span {
-					margin-left: 40px;
-				}
-				svg + span {
-					margin-left: 10px;
+				li {
+					padding: 0 10px;
+					width: auto;
+					cursor: pointer;
+					display: flex;
+					line-height: 32px;
+					font-size: 16px;
+
+					&.active {
+						background-color: rgb(255, 255, 204);
+
+						&::after {
+							content: "✔";
+							position: absolute;
+							right: 10px;
+						}
+					}
 				}
 			}
 		}

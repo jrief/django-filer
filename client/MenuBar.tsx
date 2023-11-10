@@ -1,8 +1,7 @@
 import React, {useRef, useContext, forwardRef, useState, useImperativeHandle} from 'react';
-import {useClipboard, useSorting} from './Storage';
-import {useSearchParam} from './Search';
+import {useClipboard, useCookie} from './Storage';
+import {SearchField} from './Search';
 import {FolderSettings} from "./FolderSettings";
-import SearchIcon from './icons/search.svg';
 import CopyIcon from './icons/copy.svg';
 import TilesIcon from './icons/tiles.svg';
 import ListIcon from './icons/list.svg';
@@ -18,15 +17,15 @@ import AddFolderIcon from './icons/add-folder.svg';
 import DownloadIcon from './icons/download.svg';
 import UploadIcon from './icons/upload.svg';
 
+const useSorting = () => useCookie('django-filer-sorting', '');
+
 
 export const MenuBar = forwardRef((props: any, ref) => {
 	const settings = useContext(FolderSettings);
 	const {currentFolderId, inodesRefs, folderTabsRef, openUploader, downloadFiles, setLayout, setSearchResult} = props;
-	const searchRef = useRef(null);
 	const sortingRef = useRef(null);
 	const [numSelectedInodes, setNumSelectedInodes] = useState(0);
 	const [numSelectedFiles, setNumSelectedFiles] = useState(0);
-	const [searchQuery, setSearchQuery] = useSearchParam('q');
 	const [sorting, setSorting] = useSorting();
 	const [clipboard, setClipboard] = useClipboard();
 
@@ -51,36 +50,9 @@ export const MenuBar = forwardRef((props: any, ref) => {
 
 	window.addEventListener('click', event => {
 		if (!sortingRef.current?.parentElement?.contains(event.target)) {
-			sortingRef.current.hidden = true;
+			sortingRef.current.setAttribute('aria-expanded', 'false');
 		}
 	});
-
-	function handleSearch(event) {
-		const performSearch = () => {
-			setSearchQuery(searchRef.current.value);
-			const current = inodesRefs[settings.folder_id].current;
-			current.setSearchQuery(searchRef.current.value);
-			setSearchResult(true);
-		};
-		const resetSearch = () => {
-			setSearchQuery('');
-			Object.entries(inodesRefs as React.MutableRefObject<any>).forEach(([folderId, inodeRef]) => {
-				inodeRef.current?.setSearchQuery();
-			});
-			setSearchResult(false);
-		};
-
-		if (event.type === 'change' && searchRef.current.value.length === 0) {
-			// clicked on the X button
-			resetSearch();
-		} else if (event.type === 'keydown' && event.key === 'Enter') {
-			// pressed Enter
-			searchRef.current.value.length === 0 ? resetSearch() : performSearch();
-		} else if (event.type === 'click' && searchRef.current.value.length > 2) {
-			// clicked on the search button
-			performSearch();
-		}
-	}
 
 	function confirmEraseTrashFolder() {
 		if (window.confirm("Erase all files in the trash folder?")) {
@@ -101,7 +73,7 @@ export const MenuBar = forwardRef((props: any, ref) => {
 		const isActive = (value) => sorting === value ? 'active' : null;
 
 		return (
-			<ul ref={sortingRef} className="sorting-options" hidden>
+			<ul ref={sortingRef} role="combobox" aria-expanded="false">
 				<li onClick={() => changeSorting('')} className={isActive('')}><span>Unsorted</span></li>
 				<li onClick={() => changeSorting('name_asc')} className={isActive('name_asc')}><SortDescIcon /><span>Name</span></li>
 				<li onClick={() => changeSorting('name_desc')} className={isActive('name_desc')}><SortAscIcon /><span>Name</span></li>
@@ -250,27 +222,26 @@ export const MenuBar = forwardRef((props: any, ref) => {
 	return (
 		<nav role="menubar">
 			<ul>
-				<li>
-					<input ref={searchRef} type="search" defaultValue={searchQuery} placeholder="Search for …" onChange={handleSearch} onKeyDown={handleSearch} />
-					<span onClick={handleSearch}><SearchIcon /></span>
+				<li className="search-field">
+					<SearchField inodesRefs={inodesRefs} setSearchResult={setSearchResult} />
 				</li>
-				<li style={{marginLeft: 'auto'}} onClick={() => setLayout('tiles')}><TilesIcon /></li>
-				<li onClick={() => setLayout('list')}><ListIcon /></li>
-				<li style={{marginRight: 'auto'}} onClick={() => setLayout('columns')}><ColumnsIcon /></li>
-				<li style={{marginRight: 'auto'}} onClick={() => sortingRef.current.hidden = !sortingRef.current.hidden} aria-haspopup="true">
+				<li style={{marginLeft: 'auto'}} onClick={() => setLayout('tiles')} data-tooltip-id="django-filer-tooltip" data-tooltip-content={gettext("Tiles view")}><TilesIcon /></li>
+				<li onClick={() => setLayout('list')} data-tooltip-id="django-filer-tooltip" data-tooltip-content={gettext("List view")}><ListIcon /></li>
+				<li onClick={() => setLayout('columns')} data-tooltip-id="django-filer-tooltip" data-tooltip-content={gettext("Columns view")}><ColumnsIcon /></li>
+				<li className="sorting-dropdown" onClick={() => sortingRef.current.setAttribute('aria-expanded', sortingRef.current.ariaExpanded === 'true' ? 'false': 'true')} aria-haspopup="true" data-tooltip-id="django-filer-tooltip" data-tooltip-content={gettext("Change sorting order")}>
 					<SortingIcon />
 					{renderSortingOptions()}
 				</li>
-				<li className={numSelectedInodes ? null : "disabled"} onClick={cutInodes} title="Cut"><CutIcon /></li>
+				<li className={numSelectedInodes ? null : "disabled"} onClick={cutInodes} data-tooltip-id="django-filer-tooltip" data-tooltip-content={gettext("Cut selected to clipboard")}><CutIcon /></li>
 				{settings.is_trash ? (
-					<li className="erase" onClick={confirmEraseTrashFolder} title="Erase trash"><EraseIcon /></li>
+					<li className="erase" onClick={confirmEraseTrashFolder} data-tooltip-id="django-filer-tooltip" data-tooltip-content={gettext("Empty trash folder")}><EraseIcon /></li>
 				) : (<>
-					<li className={numSelectedInodes ? null : "disabled"} onClick={copyInodes} title="Copy"><CopyIcon /></li>
-					<li className={clipboard.length === 0 ? "disabled" : null} onClick={pasteInodes} title="Paste"><PasteIcon /></li>
-					<li className={numSelectedInodes ? null : "disabled"} onClick={deleteInodes} title="Delete"><TrashIcon /></li>
-					<li onClick={addFolder} title="Add folder"><AddFolderIcon /></li>
-					<li className={numSelectedFiles ? null : "disabled"} onClick={downloadSelectedFiles} title="Download"><DownloadIcon /></li>
-					<li onClick={openUploader} title="Upload"><UploadIcon /></li>
+					<li className={numSelectedInodes ? null : "disabled"} onClick={copyInodes} data-tooltip-id="django-filer-tooltip" data-tooltip-content={gettext("Copy selected to clipboard")}><CopyIcon /></li>
+					<li className={clipboard.length === 0 ? "disabled" : null} onClick={pasteInodes} data-tooltip-id="django-filer-tooltip" data-tooltip-content={gettext("Paste from clipboard")}><PasteIcon /></li>
+					<li className={numSelectedInodes ? null : "disabled"} onClick={deleteInodes} data-tooltip-id="django-filer-tooltip" data-tooltip-content={gettext("Move selected to trash folder")}><TrashIcon /></li>
+					<li onClick={addFolder} data-tooltip-id="django-filer-tooltip" data-tooltip-content={gettext("Add new folder")}><AddFolderIcon /></li>
+					<li className={numSelectedFiles ? null : "disabled"} onClick={downloadSelectedFiles} data-tooltip-id="django-filer-tooltip" data-tooltip-content={gettext("Download selected files")}><DownloadIcon /></li>
+					<li onClick={openUploader} data-tooltip-id="django-filer-tooltip" data-tooltip-content={gettext("Upload files from local host")}><UploadIcon /></li>
 				</>)}
 			</ul>
 		</nav>
