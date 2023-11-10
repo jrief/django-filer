@@ -1,4 +1,5 @@
 import React, {useContext, useRef, useState} from 'react';
+import {Tooltip} from 'react-tooltip';
 import {
 	DndContext,
 	DragOverlay,
@@ -8,7 +9,7 @@ import {
 	useSensors
 } from '@dnd-kit/core';
 import {restrictToWindowEdges} from '@dnd-kit/modifiers';
-import {useLayout} from './Storage';
+import {useCookie} from './Storage';
 import {FolderSettings} from './FolderSettings';
 import {FileUploader} from './FileUploader';
 import {FolderTabs} from './FolderTabs';
@@ -19,6 +20,8 @@ import {DroppableArea} from './Droppable';
 import DownloadIcon from './icons/download.svg';
 import TrashIcon from './icons/trash.svg';
 import MoreVerticalIcon from './icons/more-vertical.svg';
+
+const useLayout = (initial: string) => useCookie('django-filer-layout', initial);
 
 
 export default function FilerAdmin(props) {
@@ -273,5 +276,6 @@ export default function FilerAdmin(props) {
 				</DragOverlay>
 			</div>
 		</DndContext>
+		<Tooltip id="django-filer-tooltip" />
 	</>);
 }
