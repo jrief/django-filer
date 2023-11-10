@@ -96,8 +96,15 @@ export function ListItem(props) {
 	}
 
 	function updateName(event) {
-		if (name !== props.name) {
-			props.updateInode({...props, name: name});
+		const enterKey = event.type === 'keydown' && event.key === 'Enter';
+		if (event.type === 'blur' || enterKey) {
+			if (name !== props.name) {
+				props.updateInode({...props, name: name});
+			}
+			if (enterKey) {
+				event.preventDefault();
+				event.target.blur();
+			}
 		}
 	}
 
@@ -110,7 +117,7 @@ export function ListItem(props) {
 						{settings.is_trash ? (
 						<span>{props.name}</span>
 						) : (
-						<textarea name={`inode-${props.id}`} value={name} onClick={swallowEvent} onFocus={handleFocus} onChange={changeName} onBlur={updateName}></textarea>
+						<textarea name={`inode-${props.id}`} value={name} onClick={swallowEvent} onFocus={handleFocus} onChange={changeName} onBlur={updateName} onKeyDown={updateName}></textarea>
 						)}
 					</figcaption>
 				</figure>
@@ -124,7 +131,7 @@ export function ListItem(props) {
 				{settings.is_trash ? (
 					props.name
 				) : (
-					<textarea name={`inode-${props.id}`} value={name} onClick={swallowEvent} onFocus={handleFocus} onChange={changeName} onBlur={updateName}></textarea>
+					<textarea name={`inode-${props.id}`} value={name} onClick={swallowEvent} onFocus={handleFocus} onChange={changeName} onBlur={updateName} onKeyDown={updateName}></textarea>
 				)}
 				</div>
 				<div>
@@ -145,7 +152,7 @@ export function ListItem(props) {
 				{settings.is_trash ? (
 					props.name
 				) : (
-					<textarea name={`inode-${props.id}`} value={name} onClick={swallowEvent} onFocus={handleFocus} onChange={changeName} onBlur={updateName}></textarea>
+					<textarea name={`inode-${props.id}`} value={name} onClick={swallowEvent} onFocus={handleFocus} onChange={changeName} onBlur={updateName} onKeyDown={updateName}></textarea>
 				)}
 				</div>
 			</>);

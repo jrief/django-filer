@@ -212,6 +212,7 @@ export default function FilerAdmin(props) {
 									previousFolderId={previousFolderId}
 									setCurrentFolder={setCurrentFolder}
 									menuBarRef={menuBarRef}
+									folderTabsRef={folderTabsRef}
 									layout={layout}
 								/>
 							</DroppableArea>

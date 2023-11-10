@@ -14,7 +14,7 @@ from django.http.response import (
 from django.middleware.csrf import get_token
 from django.template.response import TemplateResponse
 from django.urls import path, reverse
-from django.utils.translation import gettext_lazy as _
+from django.utils.translation import gettext, gettext_lazy as _
 
 from filer.models.nextmodels import AbstractFileModel, InodeModel, NextFolder, NextFile, PinnedFolder
 
@@ -39,7 +39,6 @@ class InodeAdmin(admin.ModelAdmin):
             owner_name=inode.owner.username if inode.owner else None,
             is_folder=inode.is_folder,
             change_url=reverse('admin:filer_nextfolder_change', args=(inode.id,)),
-            update_url=reverse('admin:filer_update_inode', args=(inode.id,)),
             download_url=inode.get_download_url(),
             thumbnail_url=inode.get_thumbnail_url(),
             summary=inode.summary,
@@ -106,7 +105,6 @@ class InodeAdmin(admin.ModelAdmin):
                 queryset.values(*data_fields),
                 ({
                     'change_url': reverse('admin:filer_nextfolder_change', args=(obj.id,)),
-                    'update_url': reverse('admin:filer_update_inode', args=(obj.id,)),
                     'download_url': obj.get_download_url(),
                     'thumbnail_url': obj.get_thumbnail_url(),
                     'summary': obj.summary,
@@ -347,7 +345,7 @@ class FolderAdmin(InodeAdmin):
 
     def upload_files(self, request, folder_id):
         if request.method != 'POST':
-            return HttpResponseBadRequest('Only POST requests are allowed.')
+            return HttpResponseBadRequest(f"Method {request.method} not allowed. Only POST requests are allowed.")
         if not (folder := self.get_object(request, folder_id)):
             return HttpResponseNotFound(f"Folder {folder_id} not found.")
         if request.content_type == 'multipart/form-data' and 'upload_file' in request.FILES:
@@ -382,7 +380,11 @@ class FolderAdmin(InodeAdmin):
                 update_fields.append(field)
         if update_fields:
             obj.save(update_fields=update_fields)
-        return JsonResponse({'new_inode': self.serialize_inode(obj)})
+        current_folder = self.get_object(request, folder_id)
+        return JsonResponse({
+            'new_inode': self.serialize_inode(obj),
+            'favorite_folders': self.get_favorite_folders(request, current_folder),
+        })
 
     def copy_inodes(self, request, folder_id):
         if response := self.check_for_valid_post_request(request, folder_id):
@@ -403,7 +405,8 @@ class FolderAdmin(InodeAdmin):
         current_folder = self.get_object(request, folder_id)
         if 'target_folder' in body:
             if not (target_folder := self.get_object(request, body['target_folder'])):
-                return HttpResponseNotFound(f"Folder {body['target_folder']} not found.")
+                msg = gettext("Folder named “{folder}” not found.")
+                return HttpResponseNotFound(msg.format(folder=body['target_folder']))
         else:
             target_folder = current_folder
         try:
@@ -413,7 +416,7 @@ class FolderAdmin(InodeAdmin):
                 inode.validate_constraints()
                 inode.save(update_fields=['parent'])
         except ValidationError as e:
-            return HttpResponseBadRequest(e.message)
+            return HttpResponseBadRequest(e.message, status=409)
         return JsonResponse({
             'inodes': self.get_inodes(target_folder),
         })

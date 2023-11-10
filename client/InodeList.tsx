@@ -138,7 +138,8 @@ export const InodeList = forwardRef((props: any, ref) => {
 	}
 
 	async function updateInode(newInode) {
-		const response = await fetch(newInode.update_url, {
+		const fetchUrl = `${settings.base_url}${folderId}/update`;
+		const response = await fetch(fetchUrl, {
 			method: 'POST',
 			headers: {
 				'Content-Type': 'application/json',
@@ -148,7 +149,8 @@ export const InodeList = forwardRef((props: any, ref) => {
 		});
 		if (response.ok) {
 			const body = await response.json();
-			setInodes(inodes.map(inode => inode.id === body['new_inode'].id ? body['new_inode'] : inode));
+			setInodes(inodes.map(inode => inode.id === body.new_inode.id ? body.new_inode : inode));
+			folderTabsRef.current.setFavoriteFolders(body.favorite_folders);
 		}
 	}
 
