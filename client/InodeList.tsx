@@ -12,7 +12,8 @@ import {FolderSettings} from './FolderSettings';
 
 export const InodeList = forwardRef((props: any, ref) => {
 	const settings = useContext(FolderSettings);
-	const {folderId, previousFolderId, setCurrentFolder, menuBarRef, layout} = props;
+	const {folderId, previousFolderId, setCurrentFolder, menuBarRef, folderTabsRef, layout} = props;
+	const [isLoading, setLoading] = useState(false);
 	const [inodes, setInodes] = useState([]);
 	const [lastSelectedInode, setSelectedInode] = useState(-1);
 	const [searchQuery, setSearchQuery] = useState(() => {
@@ -41,14 +42,15 @@ export const InodeList = forwardRef((props: any, ref) => {
 	async function fetchInodes() {
 		const params = new URLSearchParams({q: searchQuery});
 		const fetchInodesUrl = `${settings.base_url}${folderId}/fetch${searchQuery ? `?${params.toString()}` : ''}`;
+		setLoading(true);
 		const response = await fetch(fetchInodesUrl);
 		if (response.ok) {
 			const body = await response.json();
 			setInodes(body.inodes);
 		} else {
 			console.error(response);
-			return;
 		}
+		setLoading(false);
 	}
 
 	async function addFolder() {
@@ -180,7 +182,7 @@ export const InodeList = forwardRef((props: any, ref) => {
 				</div>
 			</li>
 			) : null}
-			{inodes.map(inode => inode.is_folder
+			{isLoading ? <li className="status">Loading...</li> : inodes.map(inode => inode.is_folder
 			? <Folder key={inode.id} {...inode} {...props} selectInode={selectInode} updateInode={updateInode} isParent={previousFolderId === inode.id} />
 			: <File key={inode.id} {...inode} {...props} selectInode={selectInode} updateInode={updateInode} />
 			)}
