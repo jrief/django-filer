@@ -49,21 +49,21 @@ function FolderTab(props) {
 	}
 
 	if (folder.is_root) return (
-		<li ref={setNodeRef} className={cssClasses(folder)} onClick={selectTab} title="Root folder">
+		<li ref={setNodeRef} className={cssClasses(folder)} onClick={selectTab} data-tooltip-id="django-filer-tooltip" data-tooltip-content={gettext("Root folder")}>
 			<RootIcon />
 		</li>
 	);
 
 	if (folder.is_trash) return (
-		<li ref={setNodeRef} className={cssClasses(folder)} onClick={selectTab} title="Trash folder">
+		<li ref={setNodeRef} className={cssClasses(folder)} onClick={selectTab} data-tooltip-id="django-filer-tooltip" data-tooltip-content={gettext("Trash folder")}>
 			<RecycleIcon />
 		</li>
 	);
 
 	return (
-		<li ref={setNodeRef} className={cssClasses(folder)} onClick={selectTab} title={folder.name}>
+		<li ref={setNodeRef} className={cssClasses(folder)} onClick={selectTab}>
 			{folder.name}
-			<span onClick={togglePin.bind(folder)}>{folder.is_pinned ? <CloseIcon /> : <PinIcon/>}</span>
+			<span onClick={togglePin.bind(folder)} data-tooltip-id="django-filer-tooltip" data-tooltip-content={folder.is_pinned ? '' : gettext("Pin folder")}>{folder.is_pinned ? <CloseIcon /> : <PinIcon/>}</span>
 		</li>
 	);
 }
@@ -104,8 +104,10 @@ export const FolderTabs = forwardRef((props: any, ref) => {
 
 	return (
 		<ul className="folder-tabs">
-			{settings.parent_url ? <li><a href={settings.parent_url}><UpIcon /></a></li> : null}
-			{isSearchResult ? <li className="active">Search results</li> : null}
+			{settings.parent_url ? <li>
+				<a href={settings.parent_url} data-tooltip-id="django-filer-tooltip" data-tooltip-content={gettext("Change to parent folder")}><UpIcon /></a>
+			</li> : null}
+			{isSearchResult ? <li className="active">{gettext("Search results")}</li> : null}
 			{favoriteFolders.map(folder =>
 				<FolderTab
 					key={folder.id}
