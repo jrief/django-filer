@@ -417,8 +417,8 @@ $copied-inode-border: 2px dashed rgb(48, 164, 0);
 		justify-content: flex-start;
 
 		li {
-			min-height: 210px;
-			width: 160px;
+			min-height: 250px;
+			width: 190px;
 
 			.inode {
 				padding: 5px;
@@ -441,7 +441,7 @@ $copied-inode-border: 2px dashed rgb(48, 164, 0);
 						}
 
 						&[src$=".svg"] {
-							scale: 75%;
+							scale: 66%;
 						}
 					}
 

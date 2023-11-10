@@ -16,7 +16,7 @@ class ImageModel(AbstractFileModel):
     data_fields = AbstractFileModel.data_fields + ['width', 'height']
     filer_public_thumbnails = Path(filer_settings.FILER_STORAGES['public']['thumbnails']['THUMBNAIL_OPTIONS']['base_dir'])
     exif_values = set(ExifTags.Base.__members__.values())  # TODO: some values can be removed
-    thumbnail_size = (150, 150)
+    thumbnail_size = (180, 180)
 
     width = models.SmallIntegerField(default=0)
     height = models.SmallIntegerField(default=0)
