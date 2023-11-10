@@ -62,6 +62,8 @@ class InodeManager(models.Manager):
         return super().get_queryset().select_related('parent')
 
     def filter_inodes(self, **lookup):
+        if lookup.pop('is_folder', False):
+            return NextFolder.objects.filter(**lookup).iterator()
         inodes = [inode_model.objects.filter(**lookup) for inode_model in InodeModel.all_models]
         return chain(*inodes)
 
@@ -181,8 +183,7 @@ class NextFolder(InodeModel):
         return staticfiles_storage.url('filer/icons/folder.svg')
 
     def listdir(self, **lookup):
-        inodes = (inode_model.objects.filter(parent=self, **lookup) for inode_model in InodeModel.all_models)
-        return chain(*inodes)
+        return self._meta.model.objects.filter_inodes(parent=self, **lookup)
 
     def copy_to(self, folder, **kwargs):
         """
@@ -201,7 +202,7 @@ class NextFolder(InodeModel):
         parent = self.parent
         while parent is not None:
             if parent.id == self.id:
-                msg = "Parent folder can not be a descendant of the current folder"
+                msg = gettext("A parent folder can not become the descendant of a destination folder.")
                 raise ValidationError(msg)
             parent = parent.parent
         if next(self.parent.listdir(name=self.name), None):
