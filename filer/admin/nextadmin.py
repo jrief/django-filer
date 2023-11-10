@@ -160,11 +160,6 @@ class FolderAdmin(InodeAdmin):
                 name='filer_fetch_inodes',
             ),
             path(
-                '<uuid:folder_id>/search',
-                self.admin_site.admin_view(self.search_view),
-                name='filer_search_inodes',
-            ),
-            path(
                 '<uuid:folder_id>/upload',
                 self.admin_site.admin_view(self.upload_files),
                 name='filer_upload_files',
@@ -229,14 +224,6 @@ class FolderAdmin(InodeAdmin):
         model_admin = self.get_model_admin(inode_obj.mime_type)
         return model_admin.change_view(request, object_id, **kwargs)
 
-    def search_view(self, request, folder_id):
-        if not (self.get_object(request, folder_id)):
-            return HttpResponseNotFound(f"Folder {folder_id} not found.")
-        if query := request.GET.get('q'):
-            inodes = self.search_for_inodes(query)
-            return JsonResponse({'inodes': inodes})
-        return HttpResponseBadRequest("Missing query parameter.")
-
     def render_change_form(self, request, context, add=False, change=False, form_url='', obj=None):
         trash_folder = NextFolder.objects.get_trash_folder(owner=request.user)
         favorite_folders = self.get_favorite_folders(request, obj)
@@ -249,23 +236,13 @@ class FolderAdmin(InodeAdmin):
                 ancestors=self.get_ancestors(request, obj),
                 favorite_folders=favorite_folders,
                 legends=self._legends,
-                #fetch_inodes_url=reverse('admin:filer_fetch_inodes', args=(obj.id,)),
-                #move_inodes_url=reverse('admin:filer_move_inodes', args=(obj.id,)),
-                #toggle_pin_url=reverse('admin:filer_toggle_pin', args=(obj.id,)),
                 csrf_token=get_token(request),
             )
         )
         if trash_folder.id != obj.id:
-            # upload_files_uuid = uuid.UUID(32 * '0')
             context['folder_settings'].update(
                 is_root=obj.is_root,
                 is_trash=False,
-                #search_inodes_url=reverse('admin:filer_search_inodes', args=(obj.id,)),
-                #upload_files_url=reverse('admin:filer_upload_files', args=(upload_files_uuid,)),
-                #update_inode_url=reverse('admin:filer_update_inode', args=(obj.id,)),
-                #copy_inodes_url=reverse('admin:filer_copy_inodes', args=(obj.id,)),
-                #delete_inodes_url=reverse('admin:filer_delete_inodes', args=(obj.id,)),
-                #add_folder_url=reverse('admin:filer_add_folder', args=(obj.id,)),
                 parent_url=reverse('admin:filer_nextfolder_change', args=(obj.parent_id,)) if obj.parent_id else None,
             )
             if not obj.is_root and not next(filter(lambda f: f['id'] == obj.id and f.get('is_pinned'), favorite_folders), None):
@@ -274,7 +251,6 @@ class FolderAdmin(InodeAdmin):
             context['folder_settings'].update(
                 is_root=False,
                 is_trash=True,
-                #erase_trash_folder_url=reverse('admin:filer_erase_trash_folder'),
             )
         return TemplateResponse(
             request,
