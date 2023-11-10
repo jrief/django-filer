@@ -322,15 +322,16 @@ class FolderAdmin(InodeAdmin):
             return HttpResponseNotFound(f"Folder {folder_id} not found.")
         sorting = request.COOKIES.get('django-filer-sorting')
         if query := request.GET.get('q'):
-            inodes = self.search_for_inodes(query, sorting=sorting)
+            search_realm = request.COOKIES.get('django-filer-search-realm')
+            starting_folder = NextFolder.objects.root_folder if search_realm == 'everywhere' else current_folder
+            inodes = self.search_for_inodes(starting_folder, query, sorting=sorting)
         else:
             inodes = self.get_inodes(current_folder, sorting=sorting)
         return JsonResponse({
-            #'folder': current_folder.id,
             'inodes': inodes,
         })
 
-    def search_for_inodes(self, query, sorting=None):
+    def search_for_inodes(self, starting_folder, query, sorting=None):
         def traverse(folder):
             for inode in folder.listdir():
                 if inode.is_folder:
@@ -339,7 +340,7 @@ class FolderAdmin(InodeAdmin):
 
         inodes = []
         lookup = {'name__icontains': query}
-        for folder in traverse(NextFolder.objects.root_folder):
+        for folder in traverse(starting_folder):
             inodes.extend(self.get_inodes(folder, sorting=sorting, **lookup))
         return inodes
 
