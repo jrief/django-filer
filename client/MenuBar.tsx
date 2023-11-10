@@ -55,15 +55,6 @@ export const MenuBar = forwardRef((props: any, ref) => {
 		}
 	});
 
-	// async function searchForInodes(query: string) {
-	// 	const params = new URLSearchParams({q: query});
-	// 	const searchUrl = `${settings.base_url}${settings.folder_id}/search?${params.toString()}`;
-	// 	const response = await fetch(searchUrl);
-	// 	if (response.ok) {
-	// 		const body = await response.json();
-	// 	}
-	// }
-
 	function handleSearch(event) {
 		const performSearch = () => {
 			setSearchQuery(searchRef.current.value);
@@ -90,19 +81,6 @@ export const MenuBar = forwardRef((props: any, ref) => {
 			performSearch();
 		}
 	}
-
-	// function resetSearch(event) {
-	// 	if (searchRef.current.value === '') {
-	// 		debugger;
-	// 	}
-	// }
-	//
-	// function handleInputEnter(event) {
-	// 	if (event.key === 'Enter') {
-	// 		handleSearch(event);
-	// 	}
-	// 	event.stopPropagation();
-	// }
 
 	function confirmEraseTrashFolder() {
 		if (window.confirm("Erase all files in the trash folder?")) {
@@ -170,10 +148,6 @@ export const MenuBar = forwardRef((props: any, ref) => {
 			return;
 
 		const fetchUrl = `${settings.base_url}${settings.folder_id}/${moveInodes ? 'move' : 'copy'}`;
-		// if (searchQuery) {
-		// 	const params = new URLSearchParams({q: searchQuery});
-		// 	fetchUrl = `${fetchUrl}?${params.toString()}`;
-		// }
 		const response = await fetch(fetchUrl, {
 			method: 'POST',
 			headers: {
@@ -206,10 +180,6 @@ export const MenuBar = forwardRef((props: any, ref) => {
 			return;
 
 		let fetchUrl = `${settings.base_url}${settings.folder_id}/delete`;
-		// if (searchQuery) {
-		// 	const params = new URLSearchParams({q: searchQuery});
-		// 	fetchUrl = `${fetchUrl}?${params.toString()}`;
-		// }
 		const response = await fetch(fetchUrl, {
 			method: 'POST',
 			headers: {
