@@ -1,3 +1,4 @@
+import uuid
 from pathlib import Path
 
 from PIL import Image
@@ -9,10 +10,6 @@ from filer.models.imagemodels import Image as ImageModel
 from filer.models.nextmodels import NextFile, NextFolder
 from filer.contrib.image.models import ImageModel as NextImage
 from filer.utils.loader import load_model
-
-
-# ImageModel = load_model(filer_settings.FILER_IMAGE_MODEL)
-
 
 class Command(BaseCommand):
     help = "Iterates over all Pages models and populate the search index."
@@ -28,7 +25,7 @@ class Command(BaseCommand):
 
     def migrate_folder(self, v3_folder, v4_parent):
         try:
-            v4_folder = next(v4_parent.listdir(name=v3_folder.name))
+            v4_folder = next(v4_parent.listdir(name=v3_folder.name, is_folder=True))
         except StopIteration:
             v4_folder = NextFolder.objects.create(
                 name=v3_folder.name,
@@ -97,7 +94,6 @@ class Command(BaseCommand):
                 width=v3_image.width,
                 height=v3_image.height,
             )
-            v4_image.save()
         else:
             if v3_image.modified_at > v4_image.last_modified_at:
                 v4_image.name = v3_image.name if v3_image.name else v3_image.original_filename
