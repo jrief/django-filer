@@ -204,6 +204,9 @@ class NextFolder(InodeModel):
                 msg = "Parent folder can not be a descendant of the current folder"
                 raise ValidationError(msg)
             parent = parent.parent
+        if next(self.parent.listdir(name=self.name), None):
+            msg = gettext("Folder named “{name}” already exists in destination folder.")
+            raise ValidationError(msg.format(name=self.name))
 
 
 def mimetype_validator(value):

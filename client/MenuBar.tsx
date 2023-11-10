@@ -192,6 +192,10 @@ export const MenuBar = forwardRef((props: any, ref) => {
 			}
 			inodesRefs[settings.folder_id].current.setInodes(body.inodes);
 			clearClipboard();
+		} else if (response.status === 409) {
+			alert(await response.text());
+		} else {
+			console.error(response);
 		}
 	}
 
@@ -219,6 +223,8 @@ export const MenuBar = forwardRef((props: any, ref) => {
 			folderTabsRef.current.setFavoriteFolders(body.favorite_folders);
 			const inodes = current.inodes.filter(inode => inodeIds.find(id => id !== inode.id))
 			current.setInodes(inodes);
+		} else {
+			console.error(response);
 		}
 	}
 
@@ -241,6 +247,10 @@ export const MenuBar = forwardRef((props: any, ref) => {
 			const current = inodesRefs[settings.folder_id].current;
 			const body = await response.json();
 			current.setInodes([...current.inodes, body.new_folder]);  // adds new folder to the end of the list
+		} else if (response.status === 409) {
+			alert(await response.text());
+		} else {
+			console.error(response);
 		}
 	}
 

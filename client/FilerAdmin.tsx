@@ -145,6 +145,10 @@ export default function FilerAdmin(props) {
 				}
 				inodes = inodes.filter(inode => !inode.dragged);
 				inodesRefs[sourceFolderId].current.setInodes(inodes);
+			} else if (response.status === 409) {
+				alert(await response.text());
+			} else {
+				console.error(response);
 			}
 			overlayRef.current.hidden = false;
 		}
