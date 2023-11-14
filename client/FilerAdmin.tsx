@@ -116,7 +116,7 @@ export default function FilerAdmin(props) {
 		const sourceFolderId = active.data.current.folderId;
 		let inodes = inodesRefs[sourceFolderId].current?.inodes ?? [];
 		const [what, targetFolderId] = over.id.split(':');
-		if (!draggedInodes.every(inode => inode.parent === targetFolderId)) {
+		if (!draggedInodes.every(inode => [inode.id, inode.parent].includes(targetFolderId))) {
 			overlayRef.current.hidden = true;
 			if (what === 'download') {
 				downloadFiles(draggedInodes);
@@ -172,7 +172,7 @@ export default function FilerAdmin(props) {
 	function renderWorkArea() {
 		if (settings.is_trash) return (
 			<div className={`work-area ${layout}`}>
-				<SelectableArea folderId={settings.folder_id} deselectAll={deselectAll}>
+				<SelectableArea folderId={settings.folder_id} deselectAll={deselectAll} inodeRef={inodesRefs[settings.folder_id]}>
 					<InodeList
 						ref={inodesRefs[settings.folder_id]}
 						folderId={settings.folder_id}
@@ -276,6 +276,6 @@ export default function FilerAdmin(props) {
 				</DragOverlay>
 			</div>
 		</DndContext>
-		<Tooltip id="django-filer-tooltip" />
+		<Tooltip id="django-filer-tooltip" place="bottom-start" />
 	</>);
 }

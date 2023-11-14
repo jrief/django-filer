@@ -1,15 +1,14 @@
-import uuid
 from pathlib import Path
-
-from PIL import Image
 
 from django.core.management.base import BaseCommand
 
-from filer.models.filemodels import File, Folder
-from filer.models.imagemodels import Image as ImageModel
-from filer.models.nextmodels import NextFile, NextFolder
-from filer.contrib.image.models import ImageModel as NextImage
-from filer.utils.loader import load_model
+from filer.models.filemodels import Folder as FolderModel3
+from filer.models.imagemodels import Image as ImageModel3
+
+from finder.models.file import FileModel as FileModel4
+from finder.models.folder import FolderModel as FolderModel4
+from finder.contrib.image.models import ImageModel as ImageModel4
+
 
 class Command(BaseCommand):
     help = "Iterates over all Pages models and populate the search index."
@@ -20,14 +19,14 @@ class Command(BaseCommand):
         self.forward()
 
     def forward(self):
-        for v3_folder in Folder.objects.filter(parent__isnull=True):
-            self.migrate_folder(v3_folder, NextFolder.objects.root_folder)
+        for v3_folder in FolderModel3.objects.filter(parent__isnull=True):
+            self.migrate_folder(v3_folder, FolderModel4.objects.root_folder)
 
     def migrate_folder(self, v3_folder, v4_parent):
         try:
             v4_folder = next(v4_parent.listdir(name=v3_folder.name, is_folder=True))
         except StopIteration:
-            v4_folder = NextFolder.objects.create(
+            v4_folder = FolderModel4.objects.create(
                 name=v3_folder.name,
                 parent=v4_parent,
                 created_at=v3_folder.created_at,
@@ -37,7 +36,7 @@ class Command(BaseCommand):
             self.stdout.write(f"Create folder: {v4_folder}")
 
         for v3_file in v3_folder.files.all():
-            if isinstance(v3_file, ImageModel):
+            if isinstance(v3_file, ImageModel3):
                 self.migrate_image(v3_file, v4_folder)
             else:
                 self.migrate_file(v3_file, v4_folder)
@@ -51,7 +50,7 @@ class Command(BaseCommand):
         try:
             v4_file = next(v4_parent.listdir(id=inode_id))
         except StopIteration:
-            NextFile.objects.create(
+            FileModel4.objects.create(
                 id=inode_id,
                 name=v3_file.name if v3_file.name else v3_file.original_filename,
                 file_name=path.name,
@@ -80,7 +79,7 @@ class Command(BaseCommand):
         try:
             v4_image = next(v4_parent.listdir(id=inode_id))
         except StopIteration:
-            NextImage.objects.create(
+            ImageModel4.objects.create(
                 id=inode_id,
                 name=v3_image.name if v3_image.name else v3_image.original_filename,
                 file_name=path.name,

@@ -7,4 +7,3 @@ from .virtualitems import *  # noqa
 
 # the new models
 from filer.models import access
-from filer.models import nextmodels

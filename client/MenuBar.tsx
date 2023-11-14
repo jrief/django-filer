@@ -74,15 +74,15 @@ export const MenuBar = forwardRef((props: any, ref) => {
 
 		return (
 			<ul ref={sortingRef} role="combobox" aria-expanded="false">
-				<li onClick={() => changeSorting('')} className={isActive('')}><span>Unsorted</span></li>
-				<li onClick={() => changeSorting('name_asc')} className={isActive('name_asc')}><SortDescIcon /><span>Name</span></li>
-				<li onClick={() => changeSorting('name_desc')} className={isActive('name_desc')}><SortAscIcon /><span>Name</span></li>
-				<li onClick={() => changeSorting('date_asc')} className={isActive('date_asc')}><SortDescIcon /><span>Date</span></li>
-				<li onClick={() => changeSorting('date_desc')} className={isActive('date_desc')}><SortAscIcon /><span>Date</span></li>
-				<li onClick={() => changeSorting('size_asc')} className={isActive('size_asc')}><SortDescIcon /><span>Size</span></li>
-				<li onClick={() => changeSorting('size_desc')} className={isActive('size_desc')}><SortAscIcon /><span>Size</span></li>
-				<li onClick={() => changeSorting('type_asc')} className={isActive('type_asc')}><SortDescIcon /><span>Type</span></li>
-				<li onClick={() => changeSorting('type_desc')} className={isActive('type_desc')}><SortAscIcon /><span>Type</span></li>
+				<li onClick={() => changeSorting('')} className={isActive('')}><span>{gettext("Unsorted")}</span></li>
+				<li onClick={() => changeSorting('name_asc')} className={isActive('name_asc')}><SortDescIcon /><span>{gettext("Name")}</span></li>
+				<li onClick={() => changeSorting('name_desc')} className={isActive('name_desc')}><SortAscIcon /><span>{gettext("Name")}</span></li>
+				<li onClick={() => changeSorting('date_asc')} className={isActive('date_asc')}><SortDescIcon /><span>{gettext("Date")}</span></li>
+				<li onClick={() => changeSorting('date_desc')} className={isActive('date_desc')}><SortAscIcon /><span>{gettext("Date")}</span></li>
+				<li onClick={() => changeSorting('size_asc')} className={isActive('size_asc')}><SortDescIcon /><span>{gettext("Size")}</span></li>
+				<li onClick={() => changeSorting('size_desc')} className={isActive('size_desc')}><SortAscIcon /><span>{gettext("Size")}</span></li>
+				<li onClick={() => changeSorting('type_asc')} className={isActive('type_asc')}><SortDescIcon /><span>{gettext("Type")}</span></li>
+				<li onClick={() => changeSorting('type_desc')} className={isActive('type_desc')}><SortAscIcon /><span>{gettext("Type")}</span></li>
 			</ul>
 		)
 	}
@@ -163,8 +163,7 @@ export const MenuBar = forwardRef((props: any, ref) => {
 		if (response.ok) {
 			const body = await response.json();
 			folderTabsRef.current.setFavoriteFolders(body.favorite_folders);
-			const inodes = current.inodes.filter(inode => inodeIds.find(id => id !== inode.id))
-			current.setInodes(inodes);
+			current.setInodes(current.inodes.filter(inode => !inodeIds.includes(inode.id)));
 		} else {
 			console.error(response);
 		}

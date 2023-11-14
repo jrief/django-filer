@@ -192,14 +192,14 @@ $copied-inode-border: 2px dashed rgb(48, 164, 0);
 	ul.folder-tabs {
 		display: flex;
 		flex-wrap: wrap;
-		margin: 0;
+		margin: 10px 0 0 0;
 		padding: 0 15px;
 		border-bottom: 1px solid lightgrey;
 
 		li {
 			display: list-item;
 			list-style: none;
-			margin: 4px 1px -1px 1px;
+			margin: -5px 1px -1px 1px;
 			padding: 6px 14px;
 			font-size: 16px;
 			font-weight: bold;
@@ -207,6 +207,7 @@ $copied-inode-border: 2px dashed rgb(48, 164, 0);
 			border-top-left-radius: 4px;
 			border-top-right-radius: 4px;
 			border-bottom: 1px solid ghostwhite;
+			background-color: white;
 
 			&.active {
 				background-color: ghostwhite;
@@ -474,7 +475,7 @@ $copied-inode-border: 2px dashed rgb(48, 164, 0);
 						}
 
 						&[src$=".svg"] {
-							scale: 66%;
+							transform: scale(90%);
 						}
 					}
 

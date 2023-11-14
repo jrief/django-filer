@@ -34,7 +34,9 @@ INSTALLED_APPS = [
     'django.contrib.staticfiles',
     'easy_thumbnails',
     'filer',
-    'filer.contrib.image',
+    #'filer.contrib.image',
+    'finder',
+    'finder.contrib.image',
     'testapp',
 ]
 
