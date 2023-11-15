@@ -20,6 +20,8 @@ from django.http import HttpResponse
 from django.template.loader import get_template
 from django.urls import path
 
+from testapp.admin_site import admin_site
+
 
 def render_landing(request):
     template = get_template('testapp.html')
@@ -29,6 +31,7 @@ def render_landing(request):
 
 urlpatterns = [
     path('admin/', admin.site.urls),
+    path('testapp/admin/', admin_site.urls),
     path('testapp/', render_landing),
 ]
 if settings.DEBUG:

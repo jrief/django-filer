@@ -23,13 +23,16 @@ class InodeAdmin(admin.ModelAdmin):
         'type_desc': (AbstractFileModel, '-mime_type', lambda inode: inode.get('mime_type', ''), True),
     }
 
-    @classmethod
-    def serialize_inode(cls, inode):
+    def serialize_inode(self, inode):
         data = {field: inode.serializable_value(field) for field in inode.data_fields}
         data.update(
             owner_name=inode.owner.username if inode.owner else None,
             is_folder=inode.is_folder,
-            change_url=reverse('admin:finder_foldermodel_change', args=(inode.id,)),
+            change_url=reverse(
+                'admin:finder_foldermodel_change',
+                args=(inode.id,),
+                current_app=self.admin_site.name,
+            ),
             download_url=inode.get_download_url(),
             thumbnail_url=inode.get_thumbnail_url(),
             summary=inode.summary,
@@ -41,26 +44,35 @@ class InodeAdmin(admin.ModelAdmin):
     def get_fallback_folder(self, request):
         try:
             last_folder_id = request.session['finder_last_folder_id']
-            return FolderModel.objects.get(id=last_folder_id)
+            return FolderModel.objects.get(id=last_folder_id, site=self.admin_site.name)
         except (FolderModel.DoesNotExist, KeyError, ValidationError):
-            return FolderModel.objects.root_folder
+            return FolderModel.objects.get_root_folder(self.admin_site.name)
 
     def get_favorite_folders(self, request, current_folder):
-        folders = PinnedFolder.objects.filter(owner=request.user) \
-            .values('folder__id', 'folder__name') \
-            .annotate(id=F('folder__id')) \
-            .annotate(name=F('folder__name')) \
-            .values('id', 'name') \
-            .annotate(is_pinned=Value(True, output_field=BooleanField()))
-        folders = [
-            dict(**values, change_url=reverse('admin:finder_foldermodel_change', args=(values['id'],)))
-            for values in folders
-        ]
+        folders = PinnedFolder.objects.filter(
+            owner=request.user,
+            folder__site=self.admin_site.name,
+        ).values(
+            'folder__id',
+            'folder__name',
+        ).annotate(
+            id=F('folder__id'),
+            name=F('folder__name'),
+            is_pinned=Value(True, output_field=BooleanField()),
+        ).values('id', 'name', 'is_pinned')
+        folders = [dict(
+            **values,
+            change_url=reverse(
+                'admin:finder_foldermodel_change',
+                args=(values['id'],),
+                current_app=self.admin_site.name,
+            ),
+        ) for values in folders]
         fallback_folder = self.get_fallback_folder(request)
-        root_folder = FolderModel.objects.root_folder
-        trash_folder = FolderModel.objects.get_trash_folder(owner=request.user)
-        for f in folders:
-            if f['id'] == current_folder.id:
+        root_folder = FolderModel.objects.get_root_folder(self.admin_site.name)
+        trash_folder = FolderModel.objects.get_trash_folder(self.admin_site.name, owner=request.user)
+        for folder in folders:
+            if folder['id'] == current_folder.id:
                 if len(folders) == 0:
                     folders.append(self.serialize_inode(fallback_folder))
                 break
@@ -95,7 +107,11 @@ class InodeAdmin(admin.ModelAdmin):
             inodes.extend(values | computed for values, computed in zip(
                 queryset.values(*data_fields),
                 ({
-                    'change_url': reverse('admin:finder_foldermodel_change', args=(obj.id,)),
+                    'change_url': reverse(
+                        'admin:finder_foldermodel_change',
+                        args=(obj.id,),
+                        current_app=self.admin_site.name,
+                    ),
                     'download_url': obj.get_download_url(),
                     'thumbnail_url': obj.get_thumbnail_url(),
                     'summary': obj.summary,
@@ -134,7 +150,11 @@ class InodeAdmin(admin.ModelAdmin):
 
     def get_breadcrumbs(self, ancestors):
         breadcrumbs = [{
-            'link': reverse('admin:finder_foldermodel_change', args=(folder.id,)),
+            'link': reverse(
+                'admin:finder_foldermodel_change',
+                args=(folder.id,),
+                current_app=self.admin_site.name,
+            ),
             'name': str(folder),
         } for folder in ancestors]
         breadcrumbs.reverse()

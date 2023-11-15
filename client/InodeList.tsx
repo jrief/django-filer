@@ -138,7 +138,7 @@ export const InodeList = forwardRef((props: any, ref) => {
 	}
 
 	async function updateInode(newInode) {
-		const fetchUrl = `${settings.base_url}${folderId}/update`;
+		const fetchUrl = `${settings.base_url}${settings.folder_id}/update`;
 		const response = await fetch(fetchUrl, {
 			method: 'POST',
 			headers: {

@@ -14,18 +14,24 @@ from .inode import InodeManagerMixin, InodeModel
 
 
 class FolderModelManager(InodeManagerMixin, ModelManager):
-    @cached_property
-    def root_folder(self):
-        root_folder, _ = self.get_or_create(parent=None, name='root')
+    def get_root_folder(self, current_site):
+        root_folder, _ = self.get_or_create(parent=None, site=current_site, name='__root__')
         return root_folder
 
-    def get_trash_folder(self, owner):
-        trash_folder, _ = self.get_or_create(parent=None, owner=owner, name='__trash__')
+    def get_trash_folder(self, current_site, owner):
+        trash_folder, _ = self.get_or_create(parent=None, site=current_site, owner=owner, name='__trash__')
         return trash_folder
 
 
 class FolderModel(InodeModel):
     is_folder = True
+
+    site = models.CharField(
+        _("Site"),
+        default='admin',
+        editable=False,
+        max_length=200,
+    )
 
     class Meta:
         verbose_name = _("Folder")
@@ -34,6 +40,13 @@ class FolderModel(InodeModel):
         unique_together = [('parent', 'name')]
 
     objects = FolderModelManager()
+
+    def __str__(self):
+        if self.is_root:
+            return gettext("Root")
+        if self.is_trash:
+            return gettext("Trash")
+        return self.name
 
     @property
     def folder(self):
@@ -46,7 +59,7 @@ class FolderModel(InodeModel):
 
     @property
     def is_root(self):
-        return self.__class__.objects.root_folder.id == self.id
+        return self.parent is None and self.name == '__root__'
 
     @property
     def is_trash(self):
@@ -87,6 +100,9 @@ class FolderModel(InodeModel):
             parent = parent.parent
         if next(self.parent.listdir(name=self.name), None):
             msg = gettext("Folder named “{name}” already exists in destination folder.")
+            raise ValidationError(msg.format(name=self.name))
+        if self.name in ['__root__', '__trash__']:
+            msg = gettext("Folder name “{name}” is reserved.")
             raise ValidationError(msg.format(name=self.name))
 
 

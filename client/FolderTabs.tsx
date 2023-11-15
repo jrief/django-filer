@@ -89,7 +89,7 @@ export const FolderTabs = forwardRef((props: any, ref) => {
 				pinned_id: pinnedId
 			}),
 		});
-		if (response.status === 200) {
+		if (response.ok) {
 			const data = await response.json();
 			if (data.success_url) {
 				// unpinned current folder, redirect to success_url

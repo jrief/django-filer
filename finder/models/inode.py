@@ -1,22 +1,10 @@
-import hashlib
-import mimetypes
 import uuid
 from itertools import chain
-from pathlib import Path
 
 from django.conf import settings
-from django.contrib.staticfiles.storage import staticfiles_storage
-from django.core.exceptions import ImproperlyConfigured, ValidationError
-from django.core.files.base import ContentFile, File as DjangoFile
-from django.core.files.storage import default_storage
+from django.core.exceptions import ImproperlyConfigured
 from django.db import models
-from django.template.defaultfilters import filesizeformat
-from django.utils.functional import cached_property
 from django.utils.translation import gettext, gettext_lazy as _
-
-from filer import settings as filer_settings
-
-from tree_queries.query import TreeManager, TreeQuerySet
 
 
 class InodeMetaModel(models.base.ModelBase):

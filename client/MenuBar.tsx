@@ -209,7 +209,7 @@ export const MenuBar = forwardRef((props: any, ref) => {
 				'X-CSRFToken': settings.csrf_token,
 			},
 		});
-		if (response.status === 200) {
+		if (response.ok) {
 			clearClipboard();
 			const data = await response.json();
 			window.location.assign(data.success_url);
