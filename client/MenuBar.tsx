@@ -43,7 +43,7 @@ export const MenuBar = forwardRef((props: any, ref) => {
 			cutInodes();
 		} else if (event.key === 'v' && (event.ctrlKey || event.metaKey || event.altKey)) {
 			pasteInodes();
-		} else if (['Backspace', 'Delete'].includes(event.key)) {
+		} else if (['Backspace', 'Delete'].includes(event.key) && event.shiftKey) {
 			deleteInodes();
 		}
 	});
