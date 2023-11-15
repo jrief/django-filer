@@ -3,7 +3,7 @@ import json
 from django.contrib import admin
 from django.contrib.admin.utils import unquote
 from django.core.exceptions import ValidationError
-from django.db.models import Subquery
+from django.db.models import QuerySet, Subquery
 
 from django.forms.widgets import Media
 from django.http.response import (
@@ -114,8 +114,13 @@ class FolderAdmin(InodeAdmin):
     def render_change_form(self, request, context, add=False, change=False, form_url='', obj=None):
         trash_folder = FolderModel.objects.get_trash_folder(owner=request.user)
         favorite_folders = self.get_favorite_folders(request, obj)
+        ancestors = self.get_ancestors(request, obj)
+        if isinstance(ancestors, QuerySet):
+            ancestor_ids = list(ancestors.values_list('id', flat=True))
+        else:
+            ancestor_ids = [ancestor.id for ancestor in ancestors]
         context.update(
-            breadcrumbs=self.get_breadcrumbs(request, obj),
+            breadcrumbs=self.get_breadcrumbs(ancestors),
             folder_settings=dict(
                 folder_id=obj.id,
                 name=obj.name,
@@ -193,12 +198,13 @@ class FolderAdmin(InodeAdmin):
                     yield from traverse(inode)
             yield folder
 
-        def make_folders_cte(cte):
+        def make_descendant_cte(cte):
             return FolderModel.objects.filter(
                 id=starting_folder.id,
             ).values('id').union(
                 cte.join(
-                    FolderModel,parent_id=cte.col.id
+                    FolderModel,
+                    parent_id=cte.col.id
                 ).values('id'),
                 all=True,
             )
@@ -216,10 +222,10 @@ class FolderAdmin(InodeAdmin):
                 ))
         else:
             # traversing the tree using a recursive CTE (fast)
-            folders_cte = With.recursive(make_folders_cte)
-            folders_qs = folders_cte.join(
-                FolderModel, id=folders_cte.col.id
-            ).with_cte(folders_cte)
+            descendant_cte = With.recursive(make_descendant_cte)
+            folders_qs = descendant_cte.join(
+                FolderModel, id=descendant_cte.col.id
+            ).with_cte(descendant_cte)
             inodes = self.get_inodes(
                 sorting=sorting,
                 parent_id__in=Subquery(folders_qs.values('id')),

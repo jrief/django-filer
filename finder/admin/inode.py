@@ -106,19 +106,36 @@ class InodeAdmin(admin.ModelAdmin):
         return inodes
 
     def get_ancestors(self, request, folder):
-        ancestors = []
-        while folder:
-            ancestors.append(folder.id)
-            folder = folder.parent
-        return ancestors
+        def make_ascendant_cte(cte):
+            return FolderModel.objects.filter(
+                id=folder.id,
+            ).values('id', 'parent_id').union(
+                cte.join(
+                    FolderModel,
+                    id=cte.col.parent_id
+                ).values('id', 'parent_id'),
+                all=True,
+            )
 
-    def get_breadcrumbs(self, request, folder):
-        breadcrumbs = []
-        while folder:
-            breadcrumbs.append({
-                'link': reverse('admin:finder_foldermodel_change', args=(folder.id,)),
-                'name': folder.name,
-            })
-            folder = folder.parent
+        try:
+            from django_cte import With
+        except ImportError:
+            ancestors = []
+            while folder:
+                ancestors.append(folder)
+                folder = folder.parent
+            return ancestors
+        else:
+            ascendant_cte = With.recursive(make_ascendant_cte)
+            ancestor_qs = ascendant_cte.join(
+                FolderModel, id=ascendant_cte.col.id
+            ).with_cte(ascendant_cte)
+            return ancestor_qs
+
+    def get_breadcrumbs(self, ancestors):
+        breadcrumbs = [{
+            'link': reverse('admin:finder_foldermodel_change', args=(folder.id,)),
+            'name': str(folder),
+        } for folder in ancestors]
         breadcrumbs.reverse()
         return breadcrumbs
