@@ -399,9 +399,9 @@ $copied-inode-border: 2px dashed rgb(48, 164, 0);
 			&.status {
 				font-size: 18px;
 				font-weight: bold;
-				text-align: center;
 				line-height: 50px;
 				color: grey;
+				margin-left: 2em;
 			}
 
 			.inode {
@@ -451,8 +451,10 @@ $copied-inode-border: 2px dashed rgb(48, 164, 0);
 		justify-content: flex-start;
 
 		li {
-			min-height: 250px;
-			width: 190px;
+			&:not(.status) {
+				min-height: 250px;
+				width: 190px;
+			}
 
 			.inode {
 				padding: 5px;
@@ -475,7 +477,7 @@ $copied-inode-border: 2px dashed rgb(48, 164, 0);
 						}
 
 						&[src$=".svg"] {
-							transform: scale(90%);
+							transform: scale(85%);
 						}
 					}
 

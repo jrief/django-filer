@@ -108,7 +108,9 @@ export const FolderTabs = forwardRef((props: any, ref) => {
 				<a href={settings.parent_url}><UpIcon /></a>
 			</li> : null}
 			{isSearchResult ? <li className="active">{gettext("Search results")}</li> : null}
-			{favoriteFolders.map(folder =>
+			{favoriteFolders.filter(
+				folder => !isSearchResult || folder.is_pinned || folder.id !== settings.folder_id
+			).map(folder =>
 				<FolderTab
 					key={folder.id}
 					folder={folder}

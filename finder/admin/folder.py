@@ -3,6 +3,7 @@ import json
 from django.contrib import admin
 from django.contrib.admin.utils import unquote
 from django.core.exceptions import ValidationError
+from django.db.models import Subquery
 
 from django.forms.widgets import Media
 from django.http.response import (
@@ -17,6 +18,7 @@ from finder.models.file import InodeModel, FileModel
 from finder.models.folder import FolderModel, PinnedFolder
 
 from .inode import InodeAdmin
+
 
 @admin.register(FolderModel)
 class FolderAdmin(InodeAdmin):
@@ -179,7 +181,7 @@ class FolderAdmin(InodeAdmin):
             starting_folder = FolderModel.objects.root_folder if search_realm == 'everywhere' else current_folder
             inodes = self.search_for_inodes(starting_folder, query, sorting=sorting)
         else:
-            inodes = self.get_inodes(current_folder, sorting=sorting)
+            inodes = self.get_inodes(parent=current_folder, sorting=sorting)
         return JsonResponse({
             'inodes': inodes,
         })
@@ -191,10 +193,39 @@ class FolderAdmin(InodeAdmin):
                     yield from traverse(inode)
             yield folder
 
-        inodes = []
-        lookup = {'name__icontains': query}
-        for folder in traverse(starting_folder):
-            inodes.extend(self.get_inodes(folder, sorting=sorting, **lookup))
+        def make_folders_cte(cte):
+            return FolderModel.objects.filter(
+                id=starting_folder.id,
+            ).values('id').union(
+                cte.join(
+                    FolderModel,parent_id=cte.col.id
+                ).values('id'),
+                all=True,
+            )
+
+        try:
+            from django_cte import With
+        except ImportError:
+            # traversing the tree folder by folder (slow)
+            inodes = []
+            for folder in traverse(starting_folder):
+                inodes.extend(self.get_inodes(
+                    parent=folder,
+                    sorting=sorting,
+                    name__icontains=query,
+                ))
+        else:
+            # traversing the tree using a recursive CTE (fast)
+            folders_cte = With.recursive(make_folders_cte)
+            folders_qs = folders_cte.join(
+                FolderModel, id=folders_cte.col.id
+            ).with_cte(folders_cte)
+            inodes = self.get_inodes(
+                sorting=sorting,
+                parent_id__in=Subquery(folders_qs.values('id')),
+                name__icontains=query,
+            )
+
         return inodes
 
     def upload_files(self, request, folder_id):
@@ -252,7 +283,7 @@ class FolderAdmin(InodeAdmin):
         for inode in FolderModel.objects.filter_inodes(id__in=inode_ids):
             inode.copy_to(current_folder, owner=request.user)
         return JsonResponse({
-            'inodes': self.get_inodes(current_folder),
+            'inodes': self.get_inodes(parent=current_folder),
         })
 
     def move_inodes(self, request, folder_id):
@@ -275,7 +306,7 @@ class FolderAdmin(InodeAdmin):
         except ValidationError as e:
             return HttpResponseBadRequest(e.message, status=409)
         return JsonResponse({
-            'inodes': self.get_inodes(target_folder),
+            'inodes': self.get_inodes(parent=target_folder),
         })
 
     def delete_inodes(self, request, folder_id):

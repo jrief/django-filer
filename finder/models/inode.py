@@ -61,6 +61,8 @@ class InodeMetaModel(models.base.ModelBase):
 
 class InodeManagerMixin:
     def filter_inodes(self, **lookup):
+        from .folder import FolderModel
+
         if lookup.pop('is_folder', False):
             return FolderModel.objects.filter(**lookup).iterator()
         inodes = [inode_model.objects.filter(**lookup) for inode_model in InodeModel.all_models]

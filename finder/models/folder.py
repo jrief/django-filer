@@ -5,12 +5,15 @@ from django.db import models
 from django.utils.functional import cached_property
 from django.utils.translation import gettext, gettext_lazy as _
 
-from tree_queries.query import TreeManager, TreeQuerySet
+try:
+    from django_cte import CTEManager as ModelManager
+except ImportError:
+    ModelManager = models.Manager
 
-from .inode import InodeModel, InodeManagerMixin
+from .inode import InodeManagerMixin, InodeModel
 
 
-class FolderModelManager(InodeManagerMixin, TreeManager):
+class FolderModelManager(InodeManagerMixin, ModelManager):
     @cached_property
     def root_folder(self):
         root_folder, _ = self.get_or_create(parent=None, name='root')
@@ -48,13 +51,6 @@ class FolderModel(InodeModel):
     @property
     def is_trash(self):
         return self.parent is None and self.name == '__trash__'
-
-    @property
-    def Xdecendants(self):
-        """
-        Returns a queryset of all decendants of this folder.
-        """
-        return self.__class__.objects.filter(parent=self)
 
     @cached_property
     def summary(self):

@@ -78,14 +78,14 @@ class InodeAdmin(admin.ModelAdmin):
             folders.append(inode_data)
         return folders
 
-    def get_inodes(self, folder, sorting=None, **lookup):
+    def get_inodes(self, sorting=None, **lookup):
         """
         Return a serialized list of file/folder-s for the given folder.
         """
         inodes, applicable_sorting = [], []
         for inode_model in InodeModel.all_models:
             queryset = inode_model.objects.select_related('owner') \
-                .filter(parent=folder, **lookup) \
+                .filter(**lookup) \
                 .annotate(owner_name=F('owner__username')) \
                 .annotate(is_folder=Value(inode_model.is_folder, output_field=BooleanField()))
             if applicable_sorting := self.sorting_map.get(sorting):
