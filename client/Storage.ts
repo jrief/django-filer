@@ -17,8 +17,6 @@ function useSessionStorage(storageKey: string, initial) {
 
 export const useClipboard = useSessionStorage('filer-clipboard', []);
 
-export const useHistory = useSessionStorage('filer-history', {cursor: -1, hrefs: []});
-
 export function useCookie(key, initial) : [string, (value: string) => any] {
 	const [value, setValue] = useState(
 		document.cookie.split('; ').find(row => row.startsWith(`${key}=`))?.split('=')[1] ?? initial
