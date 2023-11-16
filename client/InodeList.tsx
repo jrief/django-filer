@@ -10,7 +10,7 @@ import {Folder, File, Inode, ListItem} from './Inode';
 import {FolderSettings} from './FolderSettings';
 
 
-export const InodeList = forwardRef((props: any, ref) => {
+export const InodeList = forwardRef((props: any, forwardedRef) => {
 	const settings = useContext(FolderSettings);
 	const {folderId, previousFolderId, setCurrentFolder, menuBarRef, folderTabsRef, layout} = props;
 	const [isLoading, setLoading] = useState(false);
@@ -25,7 +25,7 @@ export const InodeList = forwardRef((props: any, ref) => {
 		fetchInodes();
 	}, [searchQuery]);
 
-	useImperativeHandle(ref, () => ({
+	useImperativeHandle(forwardedRef, () => ({
 		inodes: inodes,
 		setInodes: setInodes,
 		deselectInodes: deselectInodes,

@@ -76,14 +76,14 @@ function ProgressBar(props) {
 }
 
 
-export const FileUploader = forwardRef((props: any, ref) => {
+export const FileUploader = forwardRef((props: any, forwardedRef) => {
 	const settings = useContext(FolderSettings);
 	const {folderId, handleUpload} = props;
 	const inputRef = useRef(null);
 	const [dragging, setDragging] = useState(false);
 	const [uploading, setUploading] = useState([]);
 
-	useImperativeHandle(ref, () => ({
+	useImperativeHandle(forwardedRef, () => ({
 		openUploader() {
 			inputRef.current.click()
 		}

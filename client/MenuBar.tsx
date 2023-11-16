@@ -20,7 +20,7 @@ import UploadIcon from './icons/upload.svg';
 const useSorting = () => useCookie('django-filer-sorting', '');
 
 
-export const MenuBar = forwardRef((props: any, ref) => {
+export const MenuBar = forwardRef((props: any, forwardedRef) => {
 	const settings = useContext(FolderSettings);
 	const {currentFolderId, columnRefs, folderTabsRef, openUploader, downloadFiles, setLayout, setSearchResult} = props;
 	const sortingRef = useRef(null);
@@ -29,7 +29,7 @@ export const MenuBar = forwardRef((props: any, ref) => {
 	const [sorting, setSorting] = useSorting();
 	const [clipboard, setClipboard] = useClipboard();
 
-	useImperativeHandle(ref, () => ({
+	useImperativeHandle(forwardedRef, () => ({
 		setSelected: selectedInodes => {
 			setNumSelectedInodes(selectedInodes.length);
 			setNumSelectedFiles(selectedInodes.filter(inode => !inode.is_folder).length);

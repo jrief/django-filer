@@ -68,12 +68,12 @@ function FolderTab(props) {
 	);
 }
 
-export const FolderTabs = forwardRef((props: any, ref) => {
+export const FolderTabs = forwardRef((props: any, forwardedRef) => {
 	const settings = useContext(FolderSettings);
 	const {isSearchResult} = props;
 	const [favoriteFolders, setFavoriteFolders] = useState(settings.favorite_folders);
 
-	useImperativeHandle(ref, () => ({
+	useImperativeHandle(forwardedRef, () => ({
 		setFavoriteFolders: setFavoriteFolders,
 	}));
 
