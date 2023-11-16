@@ -30,7 +30,7 @@ $copied-inode-border: 2px dashed rgb(48, 164, 0);
 				list-style: none;
 				padding: 0;
 				cursor: pointer;
-				border-radius: 3px;
+				border-radius: 4px;
 				width: 32px;
 				height: 32px;
 
@@ -90,6 +90,11 @@ $copied-inode-border: 2px dashed rgb(48, 164, 0);
 							.search-realm {
 								[role="combobox"] {
 									width: 225px;
+									li:nth-child(2) {
+										padding-bottom: 4px;
+										border-bottom: 1px solid lightgrey;
+										margin-bottom: 4px;
+									}
 								}
 
 								&::after {
@@ -155,9 +160,9 @@ $copied-inode-border: 2px dashed rgb(48, 164, 0);
 				background-color: white;
 				top: 100%;
 				left: calc(32px - 150px / 2);
-				border: 1px solid grey;
-				border-radius: 3px;
-				box-shadow: 0 0 5px grey;
+				border: 1px solid rgb(192, 192, 192);
+				border-radius: 4px;
+				box-shadow: 0 0 8px rgb(192, 192, 192);
 				display: flex;
 				flex-direction: column;
 				margin: 0;
@@ -445,6 +450,7 @@ $copied-inode-border: 2px dashed rgb(48, 164, 0);
 	.tiles ul.inode-list {
 		display: flex;
 		padding: 10px 15px;
+		gap: 10px;
 		flex-wrap: wrap;
 		flex-direction: row;
 		align-content: flex-start;
@@ -482,7 +488,6 @@ $copied-inode-border: 2px dashed rgb(48, 164, 0);
 					}
 
 					figcaption {
-						margin-top: 5px;
 						text-align: center;
 						width: 100%;
 						word-break: break-all;
@@ -500,7 +505,7 @@ $copied-inode-border: 2px dashed rgb(48, 164, 0);
 			width: 100%;
 			height: 72px;
 			box-sizing: border-box;
-			margin: 0;
+			margin: 0 0 5px;
 
 			&.header {
 				height: auto;
@@ -555,7 +560,7 @@ $copied-inode-border: 2px dashed rgb(48, 164, 0);
 				width: 100%;
 				height: 72px;
 				box-sizing: border-box;
-				margin: 0;
+				margin: 0 0 5px;
 
 				&:nth-child(even) {
 					background-color: white;
@@ -614,6 +619,10 @@ $copied-inode-border: 2px dashed rgb(48, 164, 0);
 		height: 85px;
 		overflow: hidden;
 
+		&:not(.dragging) {
+			visibility: hidden;
+		}
+
 		.quadrant {
 			position: absolute;
 			bottom: -75px;
@@ -670,13 +679,12 @@ $copied-inode-border: 2px dashed rgb(48, 164, 0);
 
 	.drag-overlay {
 		ul.inode-list {
-			padding: 0;
 			opacity: 0.75;
 			border: 1px dashed darkgrey;
+			overflow: hidden;
 
 			> li {
 				cursor: grabbing;
-				overflow: hidden;
 			}
 		}
 	}
