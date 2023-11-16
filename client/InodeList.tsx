@@ -1,4 +1,5 @@
 import React, {
+	createRef,
 	forwardRef,
 	SyntheticEvent,
 	useContext,
@@ -14,7 +15,7 @@ export const InodeList = forwardRef((props: any, forwardedRef) => {
 	const settings = useContext(FolderSettings);
 	const {folderId, previousFolderId, setCurrentFolder, menuBarRef, folderTabsRef, layout} = props;
 	const [isLoading, setLoading] = useState(false);
-	const [inodes, setInodes] = useState([]);
+	const [inodes, setInodesWithRef] = useState([]);
 	const [lastSelectedInode, setSelectedInode] = useState(-1);
 	const [searchQuery, setSearchQuery] = useState(() => {
 		const params = new URLSearchParams(window.location.search);
@@ -38,6 +39,10 @@ export const InodeList = forwardRef((props: any, forwardedRef) => {
 			await addFolder();
 		},
 	}));
+
+	function setInodes(inodes) {
+		setInodesWithRef(inodes.map(inode => ({...inode, elementRef: createRef()})));
+	}
 
 	async function fetchInodes() {
 		const params = new URLSearchParams({q: searchQuery});

@@ -92,16 +92,16 @@ export const MenuBar = forwardRef((props: any, forwardedRef) => {
 	}
 
 	function copyInodes() {
-		setClipboard(current.inodes.filter(inode => inode.selected).map(inode => ({...inode, selected: false, copied: true})));
 		const current = columnRefs[currentFolderId].current;
+		setClipboard(current.inodes.filter(inode => inode.selected).map(inode => ({id: inode.id, parent: inode.parent, selected: false, copied: true})));
 		current.setInodes(current.inodes.map(inode => ({...inode, selected: false, copied: inode.selected})));
 		setNumSelectedInodes(0);
 		setNumSelectedFiles(0);
 	}
 
 	function cutInodes() {
-		setClipboard(current.inodes.filter(inode => inode.selected).map(inode => ({...inode, selected: false, cutted: true})));
 		const current = columnRefs[currentFolderId].current;
+		setClipboard(current.inodes.filter(inode => inode.selected).map(inode => ({id: inode.id, parent: inode.parent, selected: false, cutted: true})));
 		current.setInodes(current.inodes.map(inode => ({...inode, selected: false, cutted: inode.selected})));
 		setNumSelectedInodes(0);
 		setNumSelectedFiles(0);
