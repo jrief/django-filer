@@ -29,7 +29,7 @@ export default function FilerAdmin(props) {
 	const menuBarRef = useRef(null);
 	const folderTabsRef = useRef(null);
 	const uploaderRef = useRef(null);
-	const inodesRefs = Object.fromEntries(settings.ancestors.map(id => [id, useRef(null)]));
+	const columnRefs = Object.fromEntries(settings.ancestors.map(id => [id, useRef(null)]));
 	const overlayRef = useRef(null);
 	const downloadLinkRef = useRef(null);
 	const [currentFolderId, setCurrentFolderId] = useState(settings.folder_id);
@@ -80,8 +80,8 @@ export default function FilerAdmin(props) {
 	}
 
 	function deselectAll(event?) {
-		Object.entries(inodesRefs).forEach(([folderId, inodeRef]) => {
-			inodeRef.current?.deselectInodes();
+		Object.entries(columnRefs).forEach(([folderId, columnRef]) => {
+			columnRef.current?.deselectInodes();
 		});
 		menuBarRef.current?.setSelected([]);
 	}
@@ -98,12 +98,12 @@ export default function FilerAdmin(props) {
 	function handleDragStart(event) {
 		const {active} = event;
 		const folderId = active.data.current.folderId;
-		let inodes = inodesRefs[folderId].current?.inodes ?? [];
+		let inodes = columnRefs[folderId].current?.inodes ?? [];
 		const multipleSelected = inodes.some(inode => inode.selected && inode.id === active.id);
 		inodes = multipleSelected
 			? inodes.map(inode => ({...inode, dragged: inode.selected}))
 			: inodes.map(inode => ({...inode, dragged: inode.id === active.id, selected: false}));
-		inodesRefs[folderId].current.setInodes(inodes);
+		columnRefs[folderId].current.setInodes(inodes);
 		setDraggedInodes(inodes.filter(inode => inode.dragged));
 		setActiveInode(active);
 		setCurrentFolder(folderId);
@@ -114,9 +114,9 @@ export default function FilerAdmin(props) {
 		if (!over)
 			return;
 		const sourceFolderId = active.data.current.folderId;
-		let inodes = inodesRefs[sourceFolderId].current?.inodes ?? [];
+		let inodes = columnRefs[sourceFolderId].current?.inodes ?? [];
 		const [what, targetFolderId] = over.id.split(':');
-		if (!draggedInodes.every(inode => [inode.id, inode.parent].includes(targetFolderId))) {
+		if (!draggedInodes.some(inode => [inode.id, inode.parent].includes(targetFolderId))) {
 			overlayRef.current.hidden = true;
 			if (what === 'download') {
 				downloadFiles(draggedInodes);
@@ -140,14 +140,14 @@ export default function FilerAdmin(props) {
 			});
 			if (response.ok) {
 				const body = await response.json();
-				if (body.inodes && inodesRefs[targetFolderId]?.current) {
-					inodesRefs[targetFolderId].current.setInodes(body.inodes);
+				if (body.inodes && columnRefs[targetFolderId]?.current) {
+					columnRefs[targetFolderId].current.setInodes(body.inodes);
 				}
 				if (body.favorite_folders) {
 					folderTabsRef.current.setFavoriteFolders(body.favorite_folders);
 				}
 				inodes = inodes.filter(inode => !inode.dragged);
-				inodesRefs[sourceFolderId].current.setInodes(inodes);
+				columnRefs[sourceFolderId].current.setInodes(inodes);
 			} else if (response.status === 409) {
 				alert(await response.text());
 			} else {
@@ -155,7 +155,7 @@ export default function FilerAdmin(props) {
 			}
 			overlayRef.current.hidden = false;
 		}
-		inodesRefs[sourceFolderId].current.setInodes(inodes.map(inode => ({...inode, dragged: false})));
+		columnRefs[sourceFolderId].current.setInodes(inodes.map(inode => ({...inode, dragged: false})));
 		setActiveInode(null);
 		setDraggedInodes([]);
 	}
@@ -163,8 +163,8 @@ export default function FilerAdmin(props) {
 	function handleDragCancel(event) {
 		const {active} = event;
 		const activeFolderId = active.data.current.folderId;
-		const inodes = inodesRefs[activeFolderId].current.inodes;
-		inodesRefs[activeFolderId].current.setInodes(inodes.map(inode => ({...inode, dragged: false})));
+		const inodes = columnRefs[activeFolderId].current.inodes;
+		columnRefs[activeFolderId].current.setInodes(inodes.map(inode => ({...inode, dragged: false})));
 		setActiveInode(null);
 		setDraggedInodes([]);
 	}
@@ -172,9 +172,9 @@ export default function FilerAdmin(props) {
 	function renderWorkArea() {
 		if (settings.is_trash) return (
 			<div className={`work-area ${layout}`}>
-				<SelectableArea folderId={settings.folder_id} deselectAll={deselectAll} inodeRef={inodesRefs[settings.folder_id]}>
+				<SelectableArea folderId={settings.folder_id} deselectAll={deselectAll} columnRef={columnRefs[settings.folder_id]}>
 					<InodeList
-						ref={inodesRefs[settings.folder_id]}
+						ref={columnRefs[settings.folder_id]}
 						folderId={settings.folder_id}
 						setCurrentFolder={setCurrentFolder}
 						menuBarRef={menuBarRef}
@@ -204,13 +204,13 @@ export default function FilerAdmin(props) {
 						key={folderId}
 						ref={folderId === settings.folder_id ? uploaderRef : null}
 						folderId={folderId}
-						handleUpload={id => inodesRefs[id].current.fetchInodes()}
+						handleUpload={id => columnRefs[id].current.fetchInodes()}
 					>
-						<SelectableArea folderId={folderId} deselectAll={deselectAll} inodeRef={inodesRefs[folderId]}>
+						<SelectableArea folderId={folderId} deselectAll={deselectAll} columnRef={columnRefs[folderId]}>
 							<DroppableArea id={`column:${folderId}`} className="column-droppable"
 										   currentId={`column:${currentFolderId}`}>
 								<InodeList
-									ref={inodesRefs[folderId]}
+									ref={columnRefs[folderId]}
 									folderId={folderId}
 									previousFolderId={previousFolderId}
 									setCurrentFolder={setCurrentFolder}
@@ -253,7 +253,7 @@ export default function FilerAdmin(props) {
 		<MenuBar
 			ref={menuBarRef}
 			currentFolderId={currentFolderId}
-			inodesRefs={inodesRefs}
+			columnRefs={columnRefs}
 			folderTabsRef={folderTabsRef}
 			openUploader={() => uploaderRef.current.openUploader()}
 			downloadFiles={downloadFiles}

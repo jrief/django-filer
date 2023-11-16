@@ -36,7 +36,7 @@ function useSearchParam(key) : [string, (value: string) => any] {
 
 export function SearchField(props) {
 	const settings = useContext(FolderSettings);
-	const {inodesRefs, setSearchResult} = props;
+	const {columnRefs, setSearchResult} = props;
 	const searchRef = useRef(null);
 	const searchRealmRef = useRef(null);
 	const [searchQuery, setSearchQuery] = useSearchParam('q');
@@ -51,14 +51,14 @@ export function SearchField(props) {
 	function handleSearch(event) {
 		const performSearch = () => {
 			setSearchQuery(searchRef.current.value);
-			const current = inodesRefs[settings.folder_id].current;
+			const current = columnRefs[settings.folder_id].current;
 			current.setSearchQuery(searchRef.current.value);
 			setSearchResult(true);
 		};
 		const resetSearch = () => {
 			setSearchQuery('');
-			Object.entries(inodesRefs as React.MutableRefObject<any>).forEach(([folderId, inodeRef]) => {
-				inodeRef.current?.setSearchQuery();
+			Object.entries(columnRefs as React.MutableRefObject<any>).forEach(([folderId, columnRef]) => {
+				columnRef.current?.setSearchQuery();
 			});
 			setSearchResult(false);
 		};
@@ -78,8 +78,8 @@ export function SearchField(props) {
 	function changeSearchRealm(value) {
 		if (value !== searchRealm) {
 			setSearchRealm(value);
-			 Object.entries(inodesRefs as React.MutableRefObject<any>).forEach(([folderId, inodeRef]) => {
-			 	inodeRef.current?.fetchInodes();
+			 Object.entries(columnRefs as React.MutableRefObject<any>).forEach(([folderId, columnRef]) => {
+			 	columnRef.current?.fetchInodes();
 			});
 		}
 	}

@@ -22,7 +22,7 @@ const useSorting = () => useCookie('django-filer-sorting', '');
 
 export const MenuBar = forwardRef((props: any, ref) => {
 	const settings = useContext(FolderSettings);
-	const {currentFolderId, inodesRefs, folderTabsRef, openUploader, downloadFiles, setLayout, setSearchResult} = props;
+	const {currentFolderId, columnRefs, folderTabsRef, openUploader, downloadFiles, setLayout, setSearchResult} = props;
 	const sortingRef = useRef(null);
 	const [numSelectedInodes, setNumSelectedInodes] = useState(0);
 	const [numSelectedFiles, setNumSelectedFiles] = useState(0);
@@ -63,8 +63,8 @@ export const MenuBar = forwardRef((props: any, ref) => {
 	function changeSorting(value) {
 		if (value !== sorting) {
 			setSorting(value);
-			Object.entries(inodesRefs as React.MutableRefObject<any>).forEach(([folderId, inodeRef]) => {
-				inodeRef.current?.fetchInodes();
+			Object.entries(columnRefs as React.MutableRefObject<any>).forEach(([folderId, columnRef]) => {
+				columnRef.current?.fetchInodes();
 			});
 		}
 	}
@@ -92,16 +92,16 @@ export const MenuBar = forwardRef((props: any, ref) => {
 	}
 
 	function copyInodes() {
-		const current = inodesRefs[currentFolderId].current;
 		setClipboard(current.inodes.filter(inode => inode.selected).map(inode => ({...inode, selected: false, copied: true})));
+		const current = columnRefs[currentFolderId].current;
 		current.setInodes(current.inodes.map(inode => ({...inode, selected: false, copied: inode.selected})));
 		setNumSelectedInodes(0);
 		setNumSelectedFiles(0);
 	}
 
 	function cutInodes() {
-		const current = inodesRefs[currentFolderId].current;
 		setClipboard(current.inodes.filter(inode => inode.selected).map(inode => ({...inode, selected: false, cutted: true})));
+		const current = columnRefs[currentFolderId].current;
 		current.setInodes(current.inodes.map(inode => ({...inode, selected: false, cutted: inode.selected})));
 		setNumSelectedInodes(0);
 		setNumSelectedFiles(0);
@@ -131,12 +131,12 @@ export const MenuBar = forwardRef((props: any, ref) => {
 		if (response.ok) {
 			const body = await response.json();
 			if (moveInodes) {
-				const current = inodesRefs[clipboard[0].parent]?.current;
+				const current = columnRefs[clipboard[0].parent]?.current;
 				if (current) {
 					current.setInodes(current.inodes.filter(inode => inodeIds.find(id => id !== inode.id)));
 				}
 			}
-			inodesRefs[settings.folder_id].current.setInodes(body.inodes);
+			columnRefs[settings.folder_id].current.setInodes(body.inodes);
 			clearClipboard();
 		} else if (response.status === 409) {
 			alert(await response.text());
@@ -146,7 +146,7 @@ export const MenuBar = forwardRef((props: any, ref) => {
 	}
 
 	async function deleteInodes() {
-		const current = inodesRefs[currentFolderId].current;
+		const current = columnRefs[currentFolderId].current;
 		const inodeIds = current.inodes.filter(inode => inode.selected).map(inode => inode.id);
 		if (inodeIds.length === 0)
 			return;
@@ -185,7 +185,7 @@ export const MenuBar = forwardRef((props: any, ref) => {
 			}),
 		});
 		if (response.ok) {
-			const current = inodesRefs[settings.folder_id].current;
+			const current = columnRefs[settings.folder_id].current;
 			const body = await response.json();
 			current.setInodes([...current.inodes, body.new_folder]);  // adds new folder to the end of the list
 		} else if (response.status === 409) {
@@ -196,7 +196,7 @@ export const MenuBar = forwardRef((props: any, ref) => {
 	}
 
 	function downloadSelectedFiles() {
-		const current = inodesRefs[currentFolderId].current;
+		const current = columnRefs[currentFolderId].current;
 		downloadFiles(current.inodes.filter(inode => !inode.is_folder && inode.selected));
 		current.deselectinodes();
 	}
@@ -222,7 +222,7 @@ export const MenuBar = forwardRef((props: any, ref) => {
 		<nav role="menubar">
 			<ul>
 				<li className="search-field">
-					<SearchField inodesRefs={inodesRefs} setSearchResult={setSearchResult} />
+					<SearchField columnRefs={columnRefs} setSearchResult={setSearchResult} />
 				</li>
 				<li style={{marginLeft: 'auto'}} onClick={() => setLayout('tiles')} data-tooltip-id="django-filer-tooltip" data-tooltip-content={gettext("Tiles view")}><TilesIcon /></li>
 				<li onClick={() => setLayout('list')} data-tooltip-id="django-filer-tooltip" data-tooltip-content={gettext("List view")}><ListIcon /></li>

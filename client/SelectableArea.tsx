@@ -20,7 +20,7 @@ function SelectRectangle(props) {
 
 export const SelectableArea = (props) => {
 	const settings = useContext(FolderSettings);
-	const {folderId, deselectAll, inodeRef} = props;
+	const {folderId, deselectAll, columnRef} = props;
 	const areaRef = useRef(null);
 	const [activeRect, setActiveRect] = useState(null);
 	const [clickHandler, setClickHandler] = useState(null);
@@ -101,7 +101,7 @@ export const SelectableArea = (props) => {
 				overlappingInodeIds.push(element.dataset.id);
 			}
 		}
-		inodeRef.current.selectMultipleInodes(overlappingInodeIds);
+		columnRef.current.selectMultipleInodes(overlappingInodeIds);
 		selectionDiscard();
 	};
 
