@@ -169,8 +169,8 @@ export default function FilerAdmin(props) {
 		setDraggedInodes([]);
 	}
 
-	function renderWorkArea() {
-		if (settings.is_trash) return (
+	function renderTrashArea() {
+		return (
 			<div className={`work-area ${layout}`}>
 				<SelectableArea folderId={settings.folder_id} deselectAll={deselectAll} columnRef={columnRefs[settings.folder_id]}>
 					<InodeList
@@ -183,7 +183,9 @@ export default function FilerAdmin(props) {
 				</SelectableArea>
 			</div>
 		);
+	}
 
+	function renderWorkArea() {
 		let incomplete = false;
 		function renderAncestors() {
 			const ancestors = [settings.ancestors[0]];
@@ -227,12 +229,13 @@ export default function FilerAdmin(props) {
 			});
 		}
 
-		return (
+		return (<>
 			<div className={`work-area ${layout}`}>
 				{renderAncestors()}
 				{incomplete ? <div className="trimmed-column"><MoreVerticalIcon/></div> : null}
 			</div>
-		);
+			{renderDroppables()}
+		</>);
 	}
 
 	function renderDroppables() {
@@ -268,8 +271,7 @@ export default function FilerAdmin(props) {
 			collisionDetection={pointerWithin}
 		>
 			<FolderTabs ref={folderTabsRef} isSearchResult={isSearchResult} />
-			{renderWorkArea()}
-			{settings.is_trash ? null : renderDroppables()}
+			{settings.is_trash ? renderTrashArea() : renderWorkArea()}
 			<div ref={overlayRef} className="drag-overlay-wrap">
 				<DragOverlay className={`drag-overlay ${layout}`} style={overlayStyle} modifiers={dragModifiers}>
 					<DraggedInodes inodes={draggedInodes} layout={layout} />
