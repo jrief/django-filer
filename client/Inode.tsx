@@ -53,8 +53,10 @@ export function Inode(props) {
 
 	if (props.selectInode)
 		return (
-			<li ref={setNodeRef} data-id={props.id} className={cssClasses()} onClick={activateInode} {...listeners} {...attributes}>
-				{props.children}
+			<li ref={props.elementRef} data-id={props.id} className={cssClasses()} onClick={activateInode} {...listeners} {...attributes}>
+				<div ref={setNodeRef}>
+					{props.children}
+				</div>
 			</li>
 		);
 	else
@@ -171,6 +173,7 @@ export function File(props) {
 		</Inode>
 	);
 }
+
 
 export function Folder(props) {
 	const {

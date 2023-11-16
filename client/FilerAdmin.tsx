@@ -40,6 +40,8 @@ export default function FilerAdmin(props) {
 		const params = new URLSearchParams(window.location.search);
 		return params.get('q') !== null;
 	});
+	const [draggedInodesStyle, setDraggedInodesStyle] = useState({});
+
 	const sensors = useSensors(
 		useSensor(PointerSensor, {
 			activationConstraint: {distance: 4},
@@ -98,6 +100,7 @@ export default function FilerAdmin(props) {
 	function handleDragStart(event) {
 		const {active} = event;
 		const folderId = active.data.current.folderId;
+		setDraggedInodesStyle(columnRefs[folderId].current.computeBoundingBox());
 		let inodes = columnRefs[folderId].current?.inodes ?? [];
 		const multipleSelected = inodes.some(inode => inode.selected && inode.id === active.id);
 		inodes = multipleSelected
@@ -251,6 +254,7 @@ export default function FilerAdmin(props) {
 	}
 
 	console.log("FilerAdmin", currentFolderId);
+	console.log("draggedInodesStyle", draggedInodesStyle);
 
 	return (<>
 		<MenuBar
@@ -274,7 +278,7 @@ export default function FilerAdmin(props) {
 			{settings.is_trash ? renderTrashArea() : renderWorkArea()}
 			<div ref={overlayRef} className="drag-overlay-wrap">
 				<DragOverlay className={`drag-overlay ${layout}`} style={overlayStyle} modifiers={dragModifiers}>
-					<DraggedInodes inodes={draggedInodes} layout={layout} />
+					<DraggedInodes inodes={draggedInodes} layout={layout} style={draggedInodesStyle} />
 				</DragOverlay>
 			</div>
 		</DndContext>
