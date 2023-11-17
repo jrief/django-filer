@@ -5,11 +5,11 @@ const buildOptions = require('yargs-parser')(process.argv.slice(2), {
 });
 
 build({
-  entryPoints: ['client/filer.tsx'],
+  entryPoints: ['client/finder.tsx'],
   bundle: true,
   minify: !buildOptions.debug,
   sourcemap: buildOptions.debug,
-  outfile: 'filer/static/admin/filer/js/filer.js',
+  outfile: 'finder/static/admin/finder/js/finder.js',
   splitting: false,
   format: 'esm',
   jsx: 'automatic',

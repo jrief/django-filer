@@ -42,7 +42,7 @@ coverage/
 .coverage
 .coverage/
 dist/
-filer/static/admin/
+finder/static/admin/
 workdir/
 
 package-lock.json

@@ -24,7 +24,7 @@ import MoreVerticalIcon from './icons/more-vertical.svg';
 const useLayout = (initial: string) => useCookie('django-filer-layout', initial);
 
 
-export default function FilerAdmin(props) {
+export default function FinderAdmin(props) {
 	const settings = useContext(FolderSettings);
 	const menuBarRef = useRef(null);
 	const folderTabsRef = useRef(null);

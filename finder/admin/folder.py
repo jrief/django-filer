@@ -35,8 +35,8 @@ class FolderAdmin(InodeAdmin):
     @property
     def media(self):
         return Media(
-            css={'all': ['admin/filer/css/FilerAdmin.css']},
-            js=['admin/filer/js/filer.js'],
+            css={'all': ['admin/finder/css/FinderAdmin.css']},
+            js=['admin/finder/js/finder.js'],
         )
 
     def get_urls(self):
@@ -44,47 +44,38 @@ class FolderAdmin(InodeAdmin):
             path(
                 '<uuid:folder_id>/fetch',
                 self.admin_site.admin_view(self.fetch_inodes),
-                name='filer_fetch_inodes',
             ),
             path(
                 '<uuid:folder_id>/upload',
                 self.admin_site.admin_view(self.upload_files),
-                name='filer_upload_files',
             ),
             path(
                 '<uuid:folder_id>/update',
                 self.admin_site.admin_view(self.update_inode),
-                name='filer_update_inode',
             ),
             path(
                 '<uuid:folder_id>/copy',
                 self.admin_site.admin_view(self.copy_inodes),
-                name='filer_copy_inodes',
             ),
             path(
                 '<uuid:folder_id>/move',
                 self.admin_site.admin_view(self.move_inodes),
-                name='filer_move_inodes',
             ),
             path(
                 '<uuid:folder_id>/delete',
                 self.admin_site.admin_view(self.delete_inodes),
-                name='filer_delete_inodes',
             ),
             path(
                 'erase_trash_folder',
                 self.admin_site.admin_view(self.erase_trash_folder),
-                name='filer_erase_trash_folder',
             ),
             path(
                 '<uuid:folder_id>/toggle_pin',
                 self.admin_site.admin_view(self.toggle_pin),
-                name='filer_toggle_pin',
             ),
             path(
                 '<uuid:folder_id>/add_folder',
                 self.admin_site.admin_view(self.add_folder),
-                name='filer_add_folder',
             ),
         ]
         urls.extend(super().get_urls())
