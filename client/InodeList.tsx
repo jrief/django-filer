@@ -32,7 +32,6 @@ export const InodeList = forwardRef((props: any, forwardedRef) => {
 		deselectInodes: deselectInodes,
 		setSearchQuery: setSearchQuery,
 		selectMultipleInodes: selectMultipleInodes,
-		computeBoundingBox: computeBoundingBoxOfSelectedInodes,
 		async fetchInodes() {
 			await fetchInodes();
 		},
@@ -43,19 +42,6 @@ export const InodeList = forwardRef((props: any, forwardedRef) => {
 
 	function setInodes(inodes) {
 		setInodesWithRef(inodes.map(inode => ({...inode, elementRef: createRef()})));
-	}
-
-	function computeBoundingBoxOfSelectedInodes() {
-		const rect = {top: Number.MAX_VALUE, bottom: 0, left: Number.MAX_VALUE, right: 0};
-		inodes.filter(inode => inode.selected).forEach(inode => {
-			const element = inode.elementRef.current;
-			const boundingBox = element.getBoundingClientRect();
-			rect.top = Math.min(rect.top, boundingBox.top);
-			rect.bottom = Math.max(rect.bottom, boundingBox.bottom);
-			rect.left = Math.min(rect.left, boundingBox.left);
-			rect.right = Math.max(rect.right, boundingBox.right);
-		});
-		return {width: rect.right - rect.left, height: rect.bottom - rect.top};
 	}
 
 	async function fetchInodes() {

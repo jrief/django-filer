@@ -28,6 +28,7 @@ export default function FilerAdmin(props) {
 	const settings = useContext(FolderSettings);
 	const menuBarRef = useRef(null);
 	const folderTabsRef = useRef(null);
+	const workAreaRef = useRef(null);
 	const uploaderRef = useRef(null);
 	const columnRefs = Object.fromEntries(settings.ancestors.map(id => [id, useRef(null)]));
 	const overlayRef = useRef(null);
@@ -97,15 +98,37 @@ export default function FilerAdmin(props) {
 		deselectAll();
 	}
 
+	function computeBoundingBox(inodes) {
+		if (inodes.length === 0) {
+			setDraggedInodesStyle({width: 0, height: 0});
+		} else {
+			const workAreaBox = workAreaRef.current.getBoundingClientRect();
+			const inodeBox = inodes[0].elementRef.current.getBoundingClientRect();
+			if (['tiles', 'mosaic'].includes(layout)) {
+				const squareRoot = Math.sqrt(inodes.length);
+				setDraggedInodesStyle({
+					width: Math.min(Math.ceil(squareRoot) * (inodeBox.width + 10) - 10, workAreaBox.width - 15),
+					height: Math.min(Math.floor(squareRoot + 0.5) * inodeBox.height, workAreaBox.height - 15),
+				});
+			} else {
+				setDraggedInodesStyle({
+					width: inodeBox.width,
+					height: Math.min(inodes.length * inodeBox.height, workAreaBox.height - 15),
+				});
+			}
+		}
+	}
+
 	function handleDragStart(event) {
 		const {active} = event;
 		const folderId = active.data.current.folderId;
-		setDraggedInodesStyle(columnRefs[folderId].current.computeBoundingBox());
 		let inodes = columnRefs[folderId].current?.inodes ?? [];
 		const multipleSelected = inodes.some(inode => inode.selected && inode.id === active.id);
+		overlayRef.current.hidden = false;
 		inodes = multipleSelected
 			? inodes.map(inode => ({...inode, dragged: inode.selected}))
 			: inodes.map(inode => ({...inode, dragged: inode.id === active.id, selected: false}));
+		computeBoundingBox(inodes.filter(inode => inode.dragged));
 		columnRefs[folderId].current.setInodes(inodes);
 		setDraggedInodes(inodes.filter(inode => inode.dragged));
 		setActiveInode(active);
@@ -233,7 +256,7 @@ export default function FilerAdmin(props) {
 		}
 
 		return (<>
-			<div className={`work-area ${layout}`}>
+			<div ref={workAreaRef} className={`work-area ${layout}`}>
 				{renderAncestors()}
 				{incomplete ? <div className="trimmed-column"><MoreVerticalIcon/></div> : null}
 			</div>
@@ -276,8 +299,8 @@ export default function FilerAdmin(props) {
 		>
 			<FolderTabs ref={folderTabsRef} isSearchResult={isSearchResult} />
 			{settings.is_trash ? renderTrashArea() : renderWorkArea()}
-			<div ref={overlayRef} className="drag-overlay-wrap">
-				<DragOverlay className={`drag-overlay ${layout}`} style={overlayStyle} modifiers={dragModifiers}>
+			<div ref={overlayRef} className="drag-overlay">
+				<DragOverlay className={layout} style={overlayStyle} modifiers={dragModifiers}>
 					<DraggedInodes inodes={draggedInodes} layout={layout} style={draggedInodesStyle} />
 				</DragOverlay>
 			</div>
