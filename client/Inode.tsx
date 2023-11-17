@@ -113,7 +113,7 @@ export function ListItem(props) {
 	}
 
 	switch (props.layout) {
-		case 'tiles':
+		case 'tiles': case 'mosaic':
 			return (
 				<figure>
 					<img src={props.thumbnail_url} />

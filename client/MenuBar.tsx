@@ -4,6 +4,7 @@ import {SearchField} from './Search';
 import {FolderSettings} from "./FolderSettings";
 import CopyIcon from './icons/copy.svg';
 import TilesIcon from './icons/tiles.svg';
+import MosaicIcon from './icons/mosaic.svg';
 import ListIcon from './icons/list.svg';
 import ColumnsIcon from './icons/columns.svg';
 import SortingIcon from './icons/sorting.svg';
@@ -225,6 +226,7 @@ export const MenuBar = forwardRef((props: any, forwardedRef) => {
 					<SearchField columnRefs={columnRefs} setSearchResult={setSearchResult} />
 				</li>
 				<li style={{marginLeft: 'auto'}} onClick={() => setLayout('tiles')} data-tooltip-id="django-filer-tooltip" data-tooltip-content={gettext("Tiles view")}><TilesIcon /></li>
+				<li onClick={() => setLayout('mosaic')} data-tooltip-id="django-filer-tooltip" data-tooltip-content={gettext("Mosaic view")}><MosaicIcon /></li>
 				<li onClick={() => setLayout('list')} data-tooltip-id="django-filer-tooltip" data-tooltip-content={gettext("List view")}><ListIcon /></li>
 				<li onClick={() => setLayout('columns')} data-tooltip-id="django-filer-tooltip" data-tooltip-content={gettext("Columns view")}><ColumnsIcon /></li>
 				<li className="sorting-dropdown" onClick={() => sortingRef.current.setAttribute('aria-expanded', sortingRef.current.ariaExpanded === 'true' ? 'false': 'true')} aria-haspopup="true" data-tooltip-id="django-filer-tooltip" data-tooltip-content={gettext("Change sorting order")}>
