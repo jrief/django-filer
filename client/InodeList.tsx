@@ -103,6 +103,8 @@ export const InodeList = forwardRef((props: any, forwardedRef) => {
 				modifier = (f, k) => ({...f, selected: k >= selectedInodeIndex && k <= lastSelectedInode});
 			} else if (lastSelectedInode !== -1 && selectedInodeIndex > lastSelectedInode) {
 				modifier = (f, k) => ({...f, selected: k >= lastSelectedInode && k <= selectedInodeIndex});
+			} else {
+				modifier = f => ({...f, selected: f.selected || f.id === this.id});
 			}
 		} else if (event.altKey || event.ctrlKey || event.metaKey) {
 			// alt/ctrl/meta click
