@@ -67,7 +67,10 @@ class FolderModel(InodeModel):
 
     @cached_property
     def summary(self):
-        return "({}, {})".format(self.num_children, gettext("items"))
+        num_inodes = self.num_children
+        num_folders = self._meta.model.objects.filter(parent_id=self.id).count()
+        num_files = num_inodes - num_folders
+        return gettext("{num_folders} Folders, {num_files} Files".format(num_folders=num_folders, num_files=num_files))
 
     def get_download_url(self):
         return None

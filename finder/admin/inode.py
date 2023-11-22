@@ -3,7 +3,7 @@ from django.core.exceptions import ValidationError
 from django.db.models.expressions import F, Value
 from django.db.models.fields import BooleanField
 from django.db.models.functions import Lower
-
+from django.template.response import TemplateResponse
 from django.urls import reverse
 
 from finder.models.file import AbstractFileModel, InodeModel
@@ -11,6 +11,7 @@ from finder.models.folder import FolderModel, PinnedFolder
 
 
 class InodeAdmin(admin.ModelAdmin):
+    form_template = 'admin/finder/change_form.html'
     extra_data_fields = ['owner_name', 'is_folder', 'parent']
     sorting_map = {
         'name_asc': (InodeModel, Lower('name').asc(), lambda inode: inode['name'].lower(), False),
@@ -148,7 +149,8 @@ class InodeAdmin(admin.ModelAdmin):
             ).with_cte(ascendant_cte)
             return ancestor_qs
 
-    def get_breadcrumbs(self, ancestors):
+    def get_breadcrumbs(self, request, obj):
+        ancestors = self.get_ancestors(request, obj)
         breadcrumbs = [{
             'link': reverse(
                 'admin:finder_foldermodel_change',
@@ -159,3 +161,13 @@ class InodeAdmin(admin.ModelAdmin):
         } for folder in ancestors]
         breadcrumbs.reverse()
         return breadcrumbs
+
+    def render_change_form(self, request, context, add=False, change=False, form_url="", obj=None):
+        context.update(
+            breadcrumbs=self.get_breadcrumbs(request, obj),
+        )
+        return TemplateResponse(
+            request,
+            self.form_template,
+            context,
+        )

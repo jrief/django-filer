@@ -10,7 +10,6 @@ from django.http.response import (
     HttpResponse, HttpResponseBadRequest, HttpResponseNotFound, HttpResponseRedirect, JsonResponse
 )
 from django.middleware.csrf import get_token
-from django.template.response import TemplateResponse
 from django.urls import path, reverse
 from django.utils.translation import gettext, gettext_lazy as _
 
@@ -22,7 +21,6 @@ from .inode import InodeAdmin
 
 @admin.register(FolderModel)
 class FolderAdmin(InodeAdmin):
-    folder_template = 'admin/finder/folder.html'
     _model_admin_cache = {}
     _legends = {
         'name': _("Name"),
@@ -35,8 +33,8 @@ class FolderAdmin(InodeAdmin):
     @property
     def media(self):
         return Media(
-            css={'all': ['admin/finder/css/FinderAdmin.css']},
-            js=['admin/finder/js/finder.js'],
+            css={'all': ['admin/finder/css/finder-admin.css']},
+            js=['admin/finder/js/folder-admin.js'],
         )
 
     def get_urls(self):
@@ -114,8 +112,7 @@ class FolderAdmin(InodeAdmin):
         else:
             ancestor_ids = [ancestor.id for ancestor in ancestors]
         context.update(
-            breadcrumbs=self.get_breadcrumbs(ancestors),
-            folder_settings=dict(
+            finder_settings=dict(
                 folder_id=obj.id,
                 name=obj.name,
                 base_url=reverse('admin:finder_foldermodel_changelist', current_app=self.admin_site.name),
@@ -134,7 +131,7 @@ class FolderAdmin(InodeAdmin):
                 )
             else:
                 parent_url = None
-            context['folder_settings'].update(
+            context['finder_settings'].update(
                 is_root=obj.is_root,
                 is_trash=False,
                 parent_url=parent_url,
@@ -142,15 +139,11 @@ class FolderAdmin(InodeAdmin):
             if not obj.is_root and not next(filter(lambda f: f['id'] == obj.id and f.get('is_pinned'), favorite_folders), None):
                 request.session['finder_last_folder_id'] = str(obj.id)
         else:
-            context['folder_settings'].update(
+            context['finder_settings'].update(
                 is_root=False,
                 is_trash=True,
             )
-        return TemplateResponse(
-            request,
-            self.folder_template,
-            context,
-        )
+        return super().render_change_form(request, context, add, change, form_url, obj)
 
     def get_object(self, request, object_id, from_field=None):
         for model in InodeModel.all_models:

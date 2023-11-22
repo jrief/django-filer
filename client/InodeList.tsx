@@ -8,11 +8,11 @@ import React, {
 	useState,
 } from 'react';
 import {Folder, File, Inode, ListItem} from './Inode';
-import {FolderSettings} from './FolderSettings';
+import {FinderSettings} from './FinderSettings';
 
 
 export const InodeList = forwardRef((props: any, forwardedRef) => {
-	const settings = useContext(FolderSettings);
+	const settings = useContext(FinderSettings);
 	const {folderId, previousFolderId, setCurrentFolder, menuBarRef, folderTabsRef, layout} = props;
 	const [isLoading, setLoading] = useState(false);
 	const [inodes, setInodesWithRef] = useState([]);
@@ -152,7 +152,7 @@ export const InodeList = forwardRef((props: any, forwardedRef) => {
 				'Content-Type': 'application/json',
 				'X-CSRFToken': settings.csrf_token,
 			},
-			body: JSON.stringify(newInode),
+			body: JSON.stringify({id: newInode.id, name: newInode.name}),
 		});
 		if (response.ok) {
 			const body = await response.json();
@@ -201,11 +201,12 @@ export const InodeList = forwardRef((props: any, forwardedRef) => {
 			<li className="header">
 				<div className="inode">
 					<div></div>
-					<div>Name</div>
-					<div>Owner</div>
-					<div>Details</div>
-					<div>Created at</div>
-					<div>Mime type</div>
+					<div>{gettext("Name")}</div>
+					<div>{gettext("Owner")}</div>
+					<div>{gettext("Details")}</div>
+					<div>{gettext("Created at")}</div>
+					<div>{gettext("Modified at")}</div>
+					<div>{gettext("Mime type")}</div>
 				</div>
 			</li>
 			) : null}

@@ -1,6 +1,6 @@
 import React, {useContext, useRef, useState} from 'react';
 import SearchIcon from './icons/search.svg';
-import {FolderSettings} from './FolderSettings';
+import {FinderSettings} from './FinderSettings';
 import {useCookie} from './Storage';
 
 const useSearchRealm = initial => useCookie('django-filer-search-realm', initial);
@@ -13,7 +13,6 @@ function useSearchParam(key) : [string, (value: string) => any] {
 	);
 
 	function setParam(value) {
-		console.log('setParam', value);
 		if (value) {
 			const params = new URLSearchParams();
 			params.set(key, value);
@@ -35,7 +34,7 @@ function useSearchParam(key) : [string, (value: string) => any] {
 
 
 export function SearchField(props) {
-	const settings = useContext(FolderSettings);
+	const settings = useContext(FinderSettings);
 	const {columnRefs, setSearchResult} = props;
 	const searchRef = useRef(null);
 	const searchRealmRef = useRef(null);
@@ -91,6 +90,8 @@ export function SearchField(props) {
 			<ul ref={searchRealmRef} role="combobox" aria-expanded="false">
 				<li onClick={() => changeSearchRealm('current')} className={isActive('current')}>{gettext("From current folder")}</li>
 				<li onClick={() => changeSearchRealm('everywhere')} className={isActive('everywhere')}>{gettext("In all folders")}</li>
+				<li onClick={() => changeSearchRealm('filename')} className={isActive('filename')}>{gettext("Filename only")}</li>
+				<li onClick={() => changeSearchRealm('content')} className={isActive('content')}>{gettext("Also file content")}</li>
 			</ul>
 		)
 	}

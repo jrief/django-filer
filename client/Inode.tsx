@@ -1,6 +1,6 @@
 import React, {useContext, useState} from 'react';
 import {useDraggable, useDroppable} from '@dnd-kit/core';
-import {FolderSettings} from './FolderSettings';
+import {FinderSettings} from './FinderSettings';
 
 
 export function Inode(props) {
@@ -69,7 +69,7 @@ export function Inode(props) {
 
 
 export function ListItem(props) {
-	const settings = useContext(FolderSettings);
+	const settings = useContext(FinderSettings);
 	const [focusHandler, setFocusHandler] = useState(null);
 	const [name, setName] = useState(props.name);
 
@@ -112,6 +112,11 @@ export function ListItem(props) {
 		}
 	}
 
+	function timestamp(dateTime: string) {
+		const date = new Date(dateTime);
+		return `${date.toLocaleDateString()} ${date.toLocaleTimeString()}`;
+	}
+
 	switch (props.layout) {
 		case 'tiles': case 'mosaic':
 			return (
@@ -144,7 +149,8 @@ export function ListItem(props) {
 				<div>
 					{props.summary}
 				</div>
-				<div>{props.created_at}</div>
+				<div>{timestamp(props.created_at)}</div>
+				<div>{timestamp(props.last_modified_at)}</div>
 				<div>{props.mime_type}</div>
 			</>);
 		case 'columns':

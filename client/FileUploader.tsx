@@ -1,5 +1,5 @@
 import React, {forwardRef, useContext, useEffect, useImperativeHandle, useRef, useState} from 'react';
-import {FolderSettings} from './FolderSettings';
+import {FinderSettings} from './FinderSettings';
 
 
 function ProgressOverlay(props) {
@@ -21,7 +21,7 @@ function ProgressOverlay(props) {
 
 
 function ProgressBar(props) {
-	const settings = useContext(FolderSettings);
+	const settings = useContext(FinderSettings);
 	const {file, folderId} = props;
 	const [complete, setComplete] = useState(0);
 
@@ -77,7 +77,7 @@ function ProgressBar(props) {
 
 
 export const FileUploader = forwardRef((props: any, forwardedRef) => {
-	const settings = useContext(FolderSettings);
+	const settings = useContext(FinderSettings);
 	const {folderId, handleUpload} = props;
 	const inputRef = useRef(null);
 	const [dragging, setDragging] = useState(false);

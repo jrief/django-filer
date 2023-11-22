@@ -1,5 +1,5 @@
 import React, {useContext, useRef, useState} from 'react';
-import {FolderSettings} from './FolderSettings';
+import {FinderSettings} from './FinderSettings';
 
 
 function SelectRectangle(props) {
@@ -19,7 +19,7 @@ function SelectRectangle(props) {
 
 
 export const SelectableArea = (props) => {
-	const settings = useContext(FolderSettings);
+	const settings = useContext(FinderSettings);
 	const {folderId, deselectAll, columnRef} = props;
 	const areaRef = useRef(null);
 	const [activeRect, setActiveRect] = useState(null);

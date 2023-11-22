@@ -1,5 +1,5 @@
 from django.contrib import admin
-from django.template.response import TemplateResponse
+from django.forms.widgets import Media
 
 from finder.models.file import FileModel
 from .inode import InodeAdmin
@@ -9,14 +9,24 @@ from .inode import InodeAdmin
 class FileAdmin(InodeAdmin):
     fields = ['name']
 
+    @property
+    def media(self):
+        return Media(
+            css={'all': ['admin/finder/css/finder-admin.css']},
+            js=['admin/finder/js/file-admin.js'],
+        )
+
     def get_model_perms(self, *args, **kwargs):
         """Prevent showing up in the admin index."""
         return {}
 
-    def Xrender_change_form(self, request, context, add=False, change=False, form_url='', obj=None):
-        folder_template = 'admin/finder/next/folder.html'
-        return TemplateResponse(
-            request,
-            folder_template,
-            context,
-        )
+    def get_ancestors(self, request, obj):
+        return super().get_ancestors(request, obj.folder)
+
+    def get_breadcrumbs(self, request, obj):
+        breadcrumbs = super().get_breadcrumbs(request, obj)
+        breadcrumbs.append({
+            'link': None,
+            'name': str(obj),
+        })
+        return breadcrumbs

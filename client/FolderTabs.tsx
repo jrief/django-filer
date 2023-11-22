@@ -1,15 +1,15 @@
 import {useDroppable} from '@dnd-kit/core';
 import React, {forwardRef, useContext, useImperativeHandle, useState, useTransition} from 'react';
+import {FinderSettings} from './FinderSettings';
 import CloseIcon from './icons/close.svg';
 import PinIcon from './icons/pin.svg';
 import RecycleIcon from './icons/recycle.svg';
 import RootIcon from './icons/root.svg';
 import UpIcon from './icons/folder-up.svg';
-import {FolderSettings} from "./FolderSettings";
 
 
 function FolderTab(props) {
-	const settings = useContext(FolderSettings);
+	const settings = useContext(FinderSettings);
 	const {folder, isSearchResult} = props;
 	const [isPending, startTransition] = useTransition();
 	const {
@@ -40,36 +40,28 @@ function FolderTab(props) {
 		return classes.join(' ');
 	}
 
-	function selectTab(event) {
-		if (!isActive || isSearchResult) {
-			startTransition(() => {
-				window.location.assign(folder.change_url);
-			});
-		}
-	}
-
 	if (folder.is_root) return (
-		<li ref={setNodeRef} className={cssClasses(folder)} onClick={selectTab} data-tooltip-id="django-filer-tooltip" data-tooltip-content={gettext("Root folder")}>
-			<RootIcon />
+		<li ref={setNodeRef} className={cssClasses(folder)} data-tooltip-id="django-filer-tooltip" data-tooltip-content={gettext("Root folder")}>
+			{!isActive || isSearchResult ? <RootIcon /> : <RootIcon />}
 		</li>
 	);
 
 	if (folder.is_trash) return (
-		<li ref={setNodeRef} className={cssClasses(folder)} onClick={selectTab} data-tooltip-id="django-filer-tooltip" data-tooltip-content={gettext("Trash folder")}>
-			<RecycleIcon />
+		<li ref={setNodeRef} className={cssClasses(folder)} data-tooltip-id="django-filer-tooltip" data-tooltip-content={gettext("Trash folder")}>
+			{!isActive || isSearchResult ? <a href={folder.change_url}><RecycleIcon /></a> : <RecycleIcon />}
 		</li>
 	);
 
 	return (
-		<li ref={setNodeRef} className={cssClasses(folder)} onClick={selectTab}>
-			{folder.name}
+		<li ref={setNodeRef} className={cssClasses(folder)}>
+			{!isActive || isSearchResult ? <a href={folder.change_url}>{folder.name}</a> : folder.name}
 			<span onClick={togglePin.bind(folder)}>{folder.is_pinned ? <CloseIcon /> : <PinIcon  data-tooltip-id="django-filer-tooltip" data-tooltip-content={gettext("Pin this folder")} />}</span>
 		</li>
 	);
 }
 
 export const FolderTabs = forwardRef((props: any, forwardedRef) => {
-	const settings = useContext(FolderSettings);
+	const settings = useContext(FinderSettings);
 	const {isSearchResult} = props;
 	const [favoriteFolders, setFavoriteFolders] = useState(settings.favorite_folders);
 

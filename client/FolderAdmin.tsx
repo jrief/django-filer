@@ -10,7 +10,7 @@ import {
 } from '@dnd-kit/core';
 import {restrictToWindowEdges} from '@dnd-kit/modifiers';
 import {useCookie} from './Storage';
-import {FolderSettings} from './FolderSettings';
+import {FinderSettings} from './FinderSettings';
 import {FileUploader} from './FileUploader';
 import {FolderTabs} from './FolderTabs';
 import {MenuBar} from './MenuBar';
@@ -24,11 +24,10 @@ import MoreVerticalIcon from './icons/more-vertical.svg';
 const useLayout = (initial: string) => useCookie('django-filer-layout', initial);
 
 
-export default function FinderAdmin(props) {
-	const settings = useContext(FolderSettings);
+export default function FolderAdmin(props) {
+	const settings = useContext(FinderSettings);
 	const menuBarRef = useRef(null);
 	const folderTabsRef = useRef(null);
-	const workAreaRef = useRef(null);
 	const uploaderRef = useRef(null);
 	const columnRefs = Object.fromEntries(settings.ancestors.map(id => [id, useRef(null)]));
 	const overlayRef = useRef(null);
@@ -102,18 +101,19 @@ export default function FinderAdmin(props) {
 		if (inodes.length === 0) {
 			setDraggedInodesStyle({width: 0, height: 0});
 		} else {
-			const workAreaBox = workAreaRef.current.getBoundingClientRect();
+			const workAreaRect = settings.workAreaRect;
 			const inodeBox = inodes[0].elementRef.current.getBoundingClientRect();
 			if (['tiles', 'mosaic'].includes(layout)) {
 				const squareRoot = Math.sqrt(inodes.length);
+				const gap = layout === 'tiles' ? 15 : 8;
 				setDraggedInodesStyle({
-					width: Math.min(Math.ceil(squareRoot) * (inodeBox.width + 10) - 10, workAreaBox.width - 15),
-					height: Math.min(Math.floor(squareRoot + 0.5) * inodeBox.height, workAreaBox.height - 15),
+					width: Math.min(Math.ceil(squareRoot) * (inodeBox.width + gap) - gap, workAreaRect.width - 10),
+					height: Math.min(Math.floor(squareRoot + 0.5) * inodeBox.height, workAreaRect.height - 10),
 				});
 			} else {
 				setDraggedInodesStyle({
 					width: inodeBox.width,
-					height: Math.min(inodes.length * inodeBox.height, workAreaBox.height - 15),
+					height: Math.min(inodes.length * inodeBox.height, workAreaRect.height - 15),
 				});
 			}
 		}
@@ -256,7 +256,7 @@ export default function FinderAdmin(props) {
 		}
 
 		return (<>
-			<div ref={workAreaRef} className={`work-area ${layout}`}>
+			<div className={`work-area ${layout}`}>
 				{renderAncestors()}
 				{incomplete ? <div className="trimmed-column"><MoreVerticalIcon/></div> : null}
 			</div>

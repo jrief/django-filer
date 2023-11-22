@@ -1,7 +1,7 @@
 import React, {useRef, useContext, forwardRef, useState, useImperativeHandle} from 'react';
 import {useClipboard, useCookie} from './Storage';
 import {SearchField} from './Search';
-import {FolderSettings} from "./FolderSettings";
+import {FinderSettings} from './FinderSettings';
 import CopyIcon from './icons/copy.svg';
 import TilesIcon from './icons/tiles.svg';
 import MosaicIcon from './icons/mosaic.svg';
@@ -22,7 +22,7 @@ const useSorting = () => useCookie('django-filer-sorting', '');
 
 
 export const MenuBar = forwardRef((props: any, forwardedRef) => {
-	const settings = useContext(FolderSettings);
+	const settings = useContext(FinderSettings);
 	const {currentFolderId, columnRefs, folderTabsRef, openUploader, downloadFiles, setLayout, setSearchResult} = props;
 	const sortingRef = useRef(null);
 	const [numSelectedInodes, setNumSelectedInodes] = useState(0);
@@ -117,7 +117,7 @@ export const MenuBar = forwardRef((props: any, forwardedRef) => {
 				return;
 			moveInodes = true;
 		}
-		if (inodeIds.length === 0 || clipboard[0].folderId === currentFolderId)
+		if (inodeIds.length === 0 || clipboard[0].parent === currentFolderId)
 			return;
 
 		const fetchUrl = `${settings.base_url}${settings.folder_id}/${moveInodes ? 'move' : 'copy'}`;
